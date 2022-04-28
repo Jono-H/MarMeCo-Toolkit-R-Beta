@@ -9,7 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown - with an update to this title - and here is another modification.
+## R Markdown
+
+@param targetArea character or object of class \code{\link{sf}}. If character, must be a valid country name from Containing 'Latitude' and 'Longitude' fields
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
