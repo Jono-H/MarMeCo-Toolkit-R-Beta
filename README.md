@@ -1,4 +1,4 @@
-# MarMeCo-Toolkit 21 comitts in...
+# MarMeCo-Toolkit
 
 ## Subheading 2
 
