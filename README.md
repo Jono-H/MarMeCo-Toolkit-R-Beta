@@ -22,4 +22,8 @@ Jo's R studio : Git works!
 
 Jo via github desktop
 
+
 checking that this works through Rstudio Jo
+
+Jono's comment via R Studio
+
