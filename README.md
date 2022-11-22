@@ -18,4 +18,7 @@ hello
 hello from ana
 
 from Beth's Rstudio commit 
+
 Jo's R studio : Git works!
+
+test again - Beth via Git tab in Rstudio
