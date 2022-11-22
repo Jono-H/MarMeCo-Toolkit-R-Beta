@@ -19,3 +19,5 @@ hello from ana
 
 from Beth's Rstudio commit 
 Jo's R studio : Git works!
+
+Jo via github desktop
