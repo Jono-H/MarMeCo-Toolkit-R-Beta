@@ -20,7 +20,7 @@
 ## behaviour
 
 ## CAUTION:
-## Definig seaward extensions around seabird breeding colonies should consider 
+## Defining seaward extensions around seabird breeding colonies should consider 
 ## the ecology of the species. In other words: it is generally unsuitable to try
 ## and delineate important sites using this method that are artificially large.
 ## For example, it would likely be unsuitable to use this method to derive a foraging
@@ -55,10 +55,7 @@ library(rgdal)
 ## Input data ----
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-
 setwd("C:\\Users\\jonathan.handley\\OneDrive - BirdLife International\\JonoHandley_BirdLife\\Pew_Antarctica")
-
 mapppd<-read.csv("./Data/PopData/mIBA_Antarctica_PenguinColPopData_ForagingRadius_June2020.csv")
 
 ## Calling the update to gridDistance function within Raster package
@@ -167,6 +164,14 @@ head(dat2,4)
 ## so this data will align with part in for loop where year is selected.
 dat3 <- dat2 %>% dplyr::select(-sps_site,-longitude_epsg_4326,-latitude_epsg_4326, -cammlr_region.y) %>% rename(cammlr_region = cammlr_region.x)
 head(dat3,4)
+
+data.penguins.antarctica <- dat3
+data.penguins.antarctica$Permissions <- "Cleaned data used in Handley & Rouyer et al. 2021, Frontiers in Marine Science, marine IBAs Antarctica. See supplementary material for individual colony references."
+
+setwd("C:\\Users\\jonathan.handley\\OneDrive - BirdLife International\\JonoHandley_BirdLife\\PROJECTS\\Marine Toolkit\\GitHub_MarineToolkit\\MarMeCo-Toolkit-R-Beta")
+
+save(data.penguins.antarctica,file = "data-testing/data.penguins.antarctica.Rdata")
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### Load in additional data layers
