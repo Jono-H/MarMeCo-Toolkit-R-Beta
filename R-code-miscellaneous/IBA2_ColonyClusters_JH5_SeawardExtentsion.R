@@ -1,6 +1,8 @@
 ################################################################################
 ################################################################################
 
+"CODE FROM HANDLEY ET AL. 2021. Marine IBAs Antarctica. Frontiers in Marine Science"
+
 ## PEW Antarctica project: Creating a decision work flow for assessing if colony
 ## clusters trigger IBA criteria. I.e. instead of 1 colony triggering criteria,
 ## check if colonies close by to each other would trigger criteria when you sum
