@@ -102,16 +102,12 @@ plot(st_geometry(col_locs_proj))
 #plot(st_geometry(basemap)) ## consider size of basemap before plotting
 #plot(st_geometry(col_locs_proj), add=T, pch = 19)
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## Load raster from map for distance calculations ----
-## Blank raster of SPECIFIED resolution that covers full extent of region
+## set projection of raster
 ## If you have already created the necessary raster - load it here.
 ## Otherwise go to "Seaward_extension_create_background_raster.R"
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 #ras <- raster::raster("./data-testing/Antarctica_5x5km/Antarctica_HighRes_5x5km.tif")
 ras <- terra::rast("./data-testing/Antarctica_5x5km/Antarctica_HighRes_5x5km_terra.tif")
-#ras <- terra::rast("./data-testing/Antarctica_1x1km/Antarctica_HighRes_1x1km_terra.tif")
+ras <- terra::rast("./data-testing/Antarctica_1x1km/Antarctica_HighRes_1x1km_terra.tif")
 plot(ras)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,7 +157,7 @@ species and 4 count types = 16 different runs of the loop"
 
 #create folders for maps to check results
 dir.create("./seaward_extension_results")
-dir.create("./seaward_extension_results/bearing_method_maps")
+dir.create("./seaward_extension_results/bearing_maps")
 
 species_list <- unique(col_locs_proj$common_name) #GEP, EMP, ADP, CHP
 
@@ -172,8 +168,8 @@ species_for_analysis <- species_list[species_number]
 ## count type
 count_type <- "penguin_count_recent"
 
-map_folder <- paste0("./seaward_extension_results/bearing_method_maps/",species_for_analysis,
-                  "_",count_type)
+map_folder <- paste0("./seaward_extension_results/bearing_maps/",species_for_analysis,
+                     "_",count_type)
 dir.create(map_folder)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,7 +268,7 @@ i <- 1
 for (i in 1:length(Colonies)){
   
   print(paste0("Colony number ", i," of ",length(Colonies),", ",
-              round(100*(i/length(Colonies))),"% complete"))
+               round(100*(i/length(Colonies))),"% complete"))
   
   #-----From Critchley Code: Not sure this actually accounting for movement around land----"
   #-----Therefore, removing for now----"
@@ -345,11 +341,11 @@ for (i in 1:length(Colonies)){
   
   ## any cell further than MaxDist, make it NA
   Dist.LandMask[Dist.LandMask > MaxDist] = NA
-
+  
   #crop to reduce plot size (otherwise memory error when saving on laptop with 8gb ram)
   Dist.LandMask <- terra::crop(Dist.LandMask,
-                                    max_dist_buffer,
-                                    snap = "out")
+                               max_dist_buffer,
+                               snap = "out")
   
   ## normalise to 0 and 1 probability of occurence
   Dist.LandMask <- -1*(Dist.LandMask/MaxDist)+1 
@@ -358,7 +354,7 @@ for (i in 1:length(Colonies)){
   
   ## Calculate distance from each cell to the colony
   
-  "MARINE TOOLKIT: TRIPLE CHECK - IS THIS DISTANCE CALCULATION AVOIDING LAND??" #Yes
+  "MARINE TOOLKIT: TRIPLE CHECK - IS THIS DISTANCE CALCULATION AVOIDING LAND??"
   
   #dist.R <- distanceFromPoints(R, (Colonies[i,]))
   #dist.R <- raster::distanceFromPoints(R, (Colonies_Sps[i,]))
@@ -395,7 +391,7 @@ for (i in 1:length(Colonies)){
   ## Surely, with a starting point (the colony), and a bearing from that point,
   ## I could then draw a triangle of sorts and extract only the raster values 
   ## within that triangle?
-
+  
   #I am currently not aiming for pizza, but instead oval shape - Beth
   
   #plot(Dist.LandMask)
@@ -426,6 +422,8 @@ for (i in 1:length(Colonies)){
   #between the colony and each point around the buffer
   bearings <- 1:360
   radial_lines <- as.data.frame(bearings)
+  radial_lines$n_sea_cells <- NA
+  radial_lines$n_cells <- NA
   radial_lines$dist_sum <- NA
   
   head(radial_lines)
@@ -442,31 +440,58 @@ for (i in 1:length(Colonies)){
     #Extract the cells that the line overlaps with
     sea_cells <- terra::extract(Dist.LandMask,bline_v)
     
-    #Store the total number of cells under the line, the number containing
+    #Store the total number of cells undet the line, the number containing
     #the sea and the dist from each to the colony via marine grid cells
     radial_lines$dist_sum[j] <- round(sum(sea_cells$layer, na.rm = T))
+    radial_lines$n_sea_cells[j] <- sum(!is.na(sea_cells$layer))
+    radial_lines$n_cells[j] <- nrow(sea_cells)
     #print(length(bearings)-j)
   }
-
+  
+  #find the circular mean percentage of the cells containing sea, and the
+  #kappa (concentration paramenter)
+  radial_lines$percent_sea_cells <- round(100*radial_lines$n_sea_cells/
+                                            radial_lines$n_cells)
+  dat_angles <- rep(radial_lines$bearings,radial_lines$percent_sea_cells)
+  dat_circ <- circular::circular(dat_angles,
+                                 type = "angles",
+                                 units = "degrees")
+  vm <- mle.vonmises(dat_circ)
+  mean_angle <- as.numeric(vm$mu)
+  cols_df$auto_bearing_n_cells[i] <- ifelse(mean_angle > 0, 
+                                            mean_angle, 360 + mean_angle)
+  cols_df$auto_bearing_n_cells_kappa[i] <- as.numeric(vm$kappa)
+  #hist(dat_angles)
+  #abline(v = cols_df$auto_bearing_n_cells[i], col = "red")
+  
   #find the circular mean for sum grid dist traveled, and the
   #kappa (concentration paramenter) 
   dat_angles_s <- rep(radial_lines$bearings,radial_lines$dist_sum)
   dat_circ_s <- circular::circular(dat_angles_s,
-                                 type = "angles",
-                                 units = "degrees")
+                                   type = "angles",
+                                   units = "degrees")
   vm_s <- mle.vonmises(dat_circ_s)
   mean_angle_s <- as.numeric(vm_s$mu)
   cols_df$auto_bearing_sum_dist[i] <- ifelse(mean_angle_s > 0,
                                              mean_angle_s, 360 + mean_angle_s)
   cols_df$auto_bearing_sum_dist_kappa[i] <- as.numeric(vm_s$kappa)
-  #hist(dat_angles)
   #abline(v = cols_df$auto_bearing_sum_dist[i], col = "blue")
-
-  #predict von Mises distribution for colony
+  
+  #precict von Mises distribution for colony
+  
+  #using percent n cells
+  vm_result <- geostats::vonMises(a = 1:360,
+                                  mu = as.numeric(vm$mu),
+                                  kappa = as.numeric(vm$kappa),
+                                  degrees = T)
+  #Scale to max distance & save to data frame
+  radial_lines$vm_dist <- vm_result/max(vm_result)*MaxDist
+  
+  #repeat for dist sum
   vm_s_result <- geostats::vonMises(a = 1:360,
-                          mu = as.numeric(vm_s$mu),
-                          kappa = as.numeric(vm_s$kappa),
-                          degrees = T)
+                                    mu = as.numeric(vm_s$mu),
+                                    kappa = as.numeric(vm_s$kappa),
+                                    degrees = T)
   #Scale to max distance & save to data frame
   radial_lines$vm_s_dist <- vm_s_result/max(vm_s_result)*MaxDist
   
@@ -476,39 +501,61 @@ for (i in 1:length(Colonies)){
   #     main = "von Mises model (km)")
   #hist(dat_angles_s)
   #par(mfrow=c(1,1))
-
+  
+  #create projected points around the perimeter using percent n cells
+  bearing_oval <- geosphere::destPoint(p = unlist(col_coords_wgs84$geometry), 
+                                       d = radial_lines$vm_dist,
+                                       b = 1:360)
+  bearing_oval_poly <- bearing_oval %>%
+    data.frame() %>%
+    st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
+    summarise(geometry = st_combine(geometry)) %>%
+    st_cast("POLYGON") %>%
+    st_transform(crs = st_crs(basemap))
+  
   #create projected points around the perimeter using dist sum
   bearing_oval_s <- geosphere::destPoint(p = unlist(col_coords_wgs84$geometry), 
-                                            d = radial_lines$vm_s_dist,
-                                            b = 1:360)
+                                         d = radial_lines$vm_s_dist,
+                                         b = 1:360)
   bearing_oval_s_poly <- bearing_oval_s %>%
     data.frame() %>%
     st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
     summarise(geometry = st_combine(geometry)) %>%
     st_cast("POLYGON") %>%
     st_transform(crs = st_crs(basemap))
-
-  #Create line for colony direction line to plot on the map
-  bearing_end_final_proj_sum <- geosphere::destPoint(p = unlist(col_coords_wgs84$geometry), 
+  
+  #Create line for colony direction line to plot on the map n cells
+  bearing_end_final_proj <- geosphere::destPoint(p = unlist(col_coords_wgs84$geometry), 
                                                  d = MaxDist,
-                                                 b = mean_angle_s) %>%
+                                                 b = mean_angle) %>%
+    data.frame() %>%
+    st_as_sf(coords = c("lon", "lat"), crs=st_crs(4326)) %>%
+    st_transform(crs = st_crs(basemap))
+  col_dir_line_v <- st_cast(st_union(bearing_end_final_proj$geometry[1],
+                                     col_coords$geometry[1]),
+                            "LINESTRING") %>% vect()
+  
+  #Create line for colony direction line to plot on the map sum
+  bearing_end_final_proj_sum <- geosphere::destPoint(p = unlist(col_coords_wgs84$geometry), 
+                                                     d = MaxDist,
+                                                     b = mean_angle_s) %>%
     data.frame() %>%
     st_as_sf(coords = c("lon", "lat"), crs=st_crs(4326)) %>%
     st_transform(crs = st_crs(basemap))
   col_dir_line_v_sum <- st_cast(st_union(bearing_end_final_proj_sum$geometry[1],
-                                     col_coords$geometry[1]),
-                            "LINESTRING") %>% vect()
+                                         col_coords$geometry[1]),
+                                "LINESTRING") %>% vect()
   
   #create colony direction line for human estimated direction
   bearing_end_final_proj_original <- geosphere::destPoint(p = unlist(col_coords_wgs84$geometry), 
-                                                     d = MaxDist,
-                                                     b = cols_df$bearing[i]) %>%
+                                                          d = MaxDist,
+                                                          b = cols_df$bearing[i]) %>%
     data.frame() %>%
     st_as_sf(coords = c("lon", "lat"), crs=st_crs(4326)) %>%
     st_transform(crs = st_crs(basemap))
   col_dir_line_v_original <- st_cast(st_union(bearing_end_final_proj_original$geometry[1],
-                                         col_coords$geometry[1]),
-                                "LINESTRING") %>% vect()
+                                              col_coords$geometry[1]),
+                                     "LINESTRING") %>% vect()
   
   #Save out a plot of the raster for each colony with 
   #maximum distance buffer and estimated colony direction
@@ -519,284 +566,40 @@ for (i in 1:length(Colonies)){
   plot(col_coords, add = T, pch = 16)
   plot(max_dist_buffer, add = T)
   plot(col_dir_line_v_original, add = T, col = "black")
+  plot(col_dir_line_v, add = T, col = "red")
   plot(col_dir_line_v_sum, add = T, col = "blue")
+  plot(bearing_oval_poly, add = T, border = "red")
   plot(bearing_oval_s_poly, add = T, border = "blue")
   dev.off()
   
   #need to add circular variance/kappa to plots
   
-  write.csv(cols_df,paste0("seaward_extension_results/bearing_method_maps/auto_bearings_",species_for_analysis,
-            "_",count_type,".csv"), row.names = F)
+  write.csv(cols_df,paste0("seaward_extension_results/bearing_maps/auto_bearings_",species_for_analysis,
+                           "_",count_type,".csv"), row.names = F)
 }  
 ## convert to WGS84
 
 
-#Compare the calculated bearings to those estimated manually
+#Compare the calculated bearings to those estimated manually ####
+plot(cols_df$bearing,cols_df$auto_bearing_n_cells)
 plot(cols_df$bearing,cols_df$auto_bearing_sum_dist)
+plot(cols_df$auto_bearing_n_cells,cols_df$auto_bearing_sum_dist)
 
 bearing_circ <- circular::circular(cols_df$bearing,
                                    type = "angles",
                                    units = "degrees")
+auto_bearing_n_cells_circ <- circular::circular(cols_df$auto_bearing_n_cells,
+                                                type = "angles",
+                                                units = "degrees")
 auto_bearing_sum_dist_circ <- circular::circular(cols_df$auto_bearing_sum_dist,
-                                   type = "angles",
-                                   units = "degrees")
+                                                 type = "angles",
+                                                 units = "degrees")
 #Run circular correlation
+cor.circular(bearing_circ,auto_bearing_n_cells_circ)
 cor.circular(bearing_circ,auto_bearing_sum_dist_circ)
+
+#Conclusion from looking at plot is that blue is better - sum grid dist
+#See ".MarineToolkit/Penguin_red_v_blue.xlsx"
+#Add only this method into the general script
+
 #Beth end ####
-
-## get starting point
-p1 <- as_Spatial(col_coords_wgs84)
-
-## specify angle on either side of colony bearing to sea
-angle = 60
-"Can consider appropriate angle still"
-
-"Will need to individually (or programmatically somehow) define the likely bearing for each colony"
-
-## Use this if bearing 0 degrees relates to East
-#ArcMap_bearing = 150 
-## Then account for map bearing
-#p_bearing = 360 - (ArcMap_bearing - 90)
-
-## Use this if bearing 0 degrees relates to North
-p_bearing = Colonies@data[i,]$bearing
-
-
-## calcualte bounding points
-p2 <- destPoint(p1, (p_bearing+angle), 400000)
-p3 <- destPoint(p1, (p_bearing-angle), 400000)
-## convert back to sf and antarctica projection
-p2sf <- st_as_sf(data.frame(p2), coords = c("lon", "lat"), crs = 4326) %>% st_transform(., crs = st_crs(basemap))
-#plot(p2sf, add = T, col = "red")
-
-p3sf <- st_as_sf(data.frame(p3), coords = c("lon", "lat"), crs = 4326) %>% st_transform(., crs = st_crs(basemap))
-#plot(p3sf, add = T, col = "red")
-
-## plot points to check what is happening in ArcMap
-#st_write(p2sf, paste("./Data/Rasters/Distribution_Test/","CHP_col53_0angle.shp", sep=""), delete_layer = T) 
-#st_write(p3sf, paste("./Data/Rasters/Distribution_Test/","CHP_col53_210angle_v2.shp", sep=""), delete_layer = T) 
-
-
-## create a polygon from the points
-#p1@coords[1]
-#p1@coords[2]
-#p2
-#p3
-
-poly_input <- rbind(c(p1@coords[1],p1@coords[2]), c(p2[1],p2[2]), c(p3[1],p3[2]), c(p1@coords[1],p1@coords[2]))
-pol <-st_polygon(list(poly_input))
-#plot(pol)
-
-#class(pol)
-#st_crs(pol)
-#class(col_coords_wgs84)
-pol2 <- st_sfc(pol, crs = 4326)
-#plot(pol2)
-pol3 <- st_transform(pol2, crs = st_crs(basemap))
-#plot(pol3)
-#plot(R)
-#plot(pol3, add = T)
-
-#st_write(pol3, paste("./Data/Rasters/Distribution_Test/","CHP_col53_Poly.shp", sep=""), delete_layer = T) 
-
-
-## ~~~~~~~~~~~~~~~~~  extract cells in directional bounding box ~~~~~~~~~~~~~~~~~~~~~~~~
-
-## create a buffer of same resolution as analysis
-pol4_buf <- st_buffer(pol3, dist = 5000) %>% as_Spatial()
-#plot(pol4_buf,add=T)
-#st_write(st_buffer(pol3, dist = 5000), paste("./Data/Rasters/Distribution_Test/","CHP_col53_PolyBuf.shp", sep=""), delete_layer = T) 
-## mask cells needed
-R_sample <- mask(R, pol4_buf)
-#plot(R_sample)
-
-#writeRaster(R_sample, 
-#            paste("./Data/Rasters/Distribution_Test/","CHP_col53_RasterBoundBuff.tif", sep=""), overwrite = T)
-
-
-## ~~~~~~~~~~~~~~~~~  continue with parts of Critchley et al. 2018 method ~~~~
-
-
-## whole area sums to one
-#'JH: Did Critchley do this right? This would mean that birds distribute themselves across the entire area
-#at sea, as oppose to the cell nearest the colony being used by all birds. Proportionally, this may not matter,
-#but the impact on summing birds for IBA purposes may be larger! Must consider...'
-#'Hashing out for now'
-#R <- R/sum(getValues(R), na.rm = T)  
-
-## multiply by the number of pairs at each colony  
-pop_num <- Colonies@data[i,] %>% dplyr::select(count_type)
-pop_num <- pop_num[1,]
-R <- R_sample
-R <- R*(as.numeric(as.character(pop_num))) # required because the pop estimates are being stored as factors after updating in ArcMap
-#R
-
-plot(R)
-title(paste(i, Colonies@data[i,]$site_id, sep="_"))
-
-# access raster attribute table
-R <- ratify(R)
-rat <- levels(R)[[1]]
-
-## assign relevant attributes
-rat$Colony <- Colonies@data[i,]$site_id
-rat$Species <- Colonies@data[i,]$common_name
-
-## Attributes relating to year of count - get column number
-yr <- if (count_type=="penguin_count_recent") {
-  6
-} else if (count_type=="penguin_count_min") {
-  10
-} else if (count_type=="count_median") {
-  14
-} else if (count_type=="penguin_count_max") {
-  18
-} 
-yr
-
-## Assign attribute
-rat$CountYear <- as.numeric(Colonies@data[i,][yr])
-
-## Confirm attributes into raster
-levels(R) <- rat
-#r@data@attributes[[1]]
-#r$layer@data@attributes[1:2][1]
-
-## Save raster for exploring in ArcMap
-## Note: Doesn't seem straightforward to save the attribute table for viewing in ArcMap, see: https://stackoverflow.com/questions/23840178/how-to-write-a-raster-with-rat-factors-in-r-raster-package
-#writeRaster(R, 
-#            paste("./Data/Rasters/IBAs_CellsJune2020/",species_for_analysis,"_",count_type,"_TEST.tif", sep=""), overwrite = T)
-
-
-# Plot raster to check it worked
-# This will slow down the loop so this step can be removed to speed things up
-#par(ask = F)
-#plot(R)
-#maxValue(R)
-#minValue(R)
-
-# Save raster for each colony into stack
-ColonyStack <- stack(ColonyStack, R)
-
-rm(R,antrans) # Remove large file that is no longer needed
-
-# run progress bar - can be removed to speed up loop
-Sys.sleep(0.1)  # slow down the code for illustration purposes
-#info <- sprintf("%d%% done", round((i/length(Colonies[,1]))*100))
-#setWinProgressBar(pb, i/(length(Colonies[,1]))*100, label=info)
-
-info <- sprintf("%d%% done", round((i/length(Colonies_Sps[,1]))*100))
-setWinProgressBar(pb, i/(length(Colonies_Sps[,1]))*100, label=info)
-
-
-## Plot individual layers
-
-nlayers(ColonyStack) ## check nlayers matches number of colonies
-
-## check random subset of layers
-Colonies@data[2,]
-ColonyStack[[1]]
-ColonyStack[[2]]
-ColonyStack[[3]]
-ColonyStack[[nlayers(ColonyStack)]]
-
-plot(ColonyStack[[1]])
-plot(ColonyStack[[2]])
-plot(ColonyStack[[3]])
-
-## Check data associated with each layer
-ColonyStack[[1]]
-summary(ColonyStack[[1]]@data@values)
-
-## check max value of each layer (should be same as penguin count for given count type (min, max, recent, median))
-maxValue(ColonyStack)
-## Check for no NA values - could indicate something in loop above is not working
-max(maxValue(ColonyStack))
-
-## Check count type in raw data to compare with above
-col_locs_proj %>% filter(common_name == species_for_analysis) %>% arrange(common_name, -(penguin_count_recent)) %>% head()
-
-## Save RasterStack
-save(ColonyStack, 
-     file=paste("./Data/Rasters/IBAs_CellsJune2020/",species_for_analysis,"_",count_type,"_dist16_stack.Rdata", sep=""))
-
-#rm(ColonyStack)
-#load(paste("./Data/Rasters/IBAs_CellsJune2020/",species_for_analysis,"_",count_type,"_dist16_stack.Rdata", sep=""))
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Sum over each raster and generate summed distribution for the species and entire region
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-"NOTE, the dist16 in saved named refers to 3rd version because of updates with gridDistance"
-
-output <- sum(ColonyStack, na.rm = T) # sum cell values across colonies
-#writeRaster(output, filename = "Raster_name", format = "GTiff", overwrite = TRUE) # Write to raster file
-plot(output)
-
-writeRaster(output, 
-            paste("./Data/Rasters/IBAs_CellsJune2020/",species_for_analysis,"_",count_type,"_A_dist16.tif", sep=""), overwrite = T)
-
-## Specify 0 cells as NA
-output[output==0] <- NA
-plot(output)
-maxValue(output)
-writeRaster(output, 
-            paste("./Data/Rasters/IBAs_CellsJune2020/",species_for_analysis,"_",count_type,"_B_dist16.tif", sep=""), overwrite = T)
-
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-"FOR MARINE TOOLKIT: This IBA section onward - needs reconsidering in context of
-what is useful output for general IBA / KBA assessments."
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-## Specify all cells over 1% global population as IBA cells
-#gpop_ADP=3790000
-#gpop_CHP=6600000 #gpop_CHP=2965800 (Updated ref of 6,600,000 based on pers. comm with Heather Lynch in 2019)
-#gpop_EMP=256500 #gpop_EMP=238000 (Updated ref of 256500 based on Trathan et al. 2019)
-#gpop_GEP=387000
-
-gpop <- data.frame(Species = c("ADP", "CHP", "EMP", "GEP"),
-                   Global_Pop = c(3790000, 3410000, 256500, 387000)) # Refs: ADP, CHP = Strycker et al. 2020, EMP = Trathan et al. 2019, GEP = 
-
-# Filter cells above and below global population threshold of 1%
-output[output < subset(gpop, gpop$Species == species_for_analysis)[,2] /100] <- 0
-output[output >= subset(gpop, gpop$Species == species_for_analysis)[,2] /100] <- 1
-plot(output)
-
-writeRaster(output, 
-            paste("./Data/Rasters/IBAs_CellsJune2020/",species_for_analysis,"_",count_type,"_C_dist16.tif", sep=""), overwrite = T)
-
-
-## -----------------------------------------------------------------------------
-### Save colonies as shapefiles for comparison
-## -----------------------------------------------------------------------------
-head(col_locs_proj,2)
-table(col_locs_proj$common_name)
-
-sps <- unique(col_locs_proj$common_name)
-sps
-
-## v2 plots include EMP colonies from Trathan et al. 2019
-## V3 final sites used for mIBA analysis
-
-#setwd("C:\\Users\\jonathan.handley\\OneDrive - BirdLife International\\JonoHandley_BirdLife\\Pew_Antarctica\\Data\\Shapefiles\\MAPPPD\\Final report")
-for(i in sps){
-  temp <- subset(col_locs_proj, col_locs_proj$common_name == i)
-  temp_locs_spdf <- as_Spatial(temp)
-  writeOGR(obj = temp_locs_spdf, dsn = "./Data/Shapefiles/PopulationData/FinalReport_v2", 
-           layer = paste(i, "_FinalSites_mIBAanalysis_v3", sep=""), driver="ESRI Shapefile", overwrite_layer = T)
-
-
-
-
-## -----------------------------------------------------------------------------
-# Plot distribution map
-## -----------------------------------------------------------------------------
-
-par(ask = F)
-plot(output)
-plot(st_geometry(Ant_med_shp), add=T)
-points(Colonies, pch = 19, cex = 0.75, col = 2)
-
-
