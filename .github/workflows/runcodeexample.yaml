@@ -1,0 +1,38 @@
+# For help debugging build failures open an issue on the RStudio community with the 'github-actions' tag.
+# https://community.rstudio.com/new-topic?category=Package%20development&tags=github-actions
+on:
+  push:
+    branches: main
+    
+name: knit
+
+jobs:
+  knit:
+    runs-on: macos-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+    
+    steps:
+      - uses: actions/checkout@v3
+    
+      - uses: r-lib/actions/setup-pandoc@v2
+    
+      - uses: r-lib/actions/setup-r@v2
+      
+      - uses: r-lib/actions/setup-tinytex@v2 
+          
+      - name: Install dependencies
+        run: |
+          install.packages(c('track2KBA','rmarkdown','knitr','remotes',"tidyverse", "readxl", "sf",  "xlsx", "sp", "gridExtra", "viridis"))
+        shell: Rscript {0}
+        
+      - name: Render my document to all types
+        run: Rscript -e 'rmarkdown::render("01-track2KBA_1_SupportScriptExplain.Rmd", output_format = "html")'
+            
+      - name: Commit results
+        run: |
+          git add 01-track2KBA_1_SupportScriptExplain.html
+          git commit -m 'Re-build my-document' || echo "No changes to commit"
+          git push origin || echo "No changes to commit"
+  
