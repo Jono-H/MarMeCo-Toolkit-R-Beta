@@ -34,10 +34,14 @@ jobs:
         
       - name: Render my document to all types
         run: Rscript -e 'rmarkdown::render("01-track2KBA_1_SupportScriptExplain.Rmd", output_format = "html_document")'
+        
+      - name: purl my document
+        run: Rscript -e 'knitr::purl("01-track2KBA_1_SupportScriptExplain.Rmd", output = "01-track2KBA_1_SupportScriptExplain.R")'
             
       - name: Commit results
         run: |
           git add 01-track2KBA_1_SupportScriptExplain.html
+          git add 01-track2KBA_1_SupportScriptExplain.R
           git commit -m 'Re-build my-document' || echo "No changes to commit"
           git push origin || echo "No changes to commit"
   
