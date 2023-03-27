@@ -1,9 +1,3 @@
----
-output:
-  pdf_document: default
-  html_document: default
----
-
 <!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
 
 <!--- {-} curly brackets hash means subsections won't get numbered -->

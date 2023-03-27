@@ -297,29 +297,29 @@ st_write(df_sbtd_sf, paste(path_to_folder, "/",
 ## may want to save the files individually for each bird / animal instead.
 
 "OPTION using lists and apply function"
-# # Load the required libraries
-# library(sf)
-# library(purrr)
-# # Define the factor to split the sf object by
-# split_by_factor <- "bird_id_num"
-# 
-# # Split the sf object by the factor
-# split_sf <- split(df_sbtd_sf, df_sbtd_sf[[split_by_factor]])
-# 
-# # Define a function to save sf objects as shapefiles within the specified working
-# # directory
-# save_shapefile <- function(sf_obj) {
-#   st_write(sf_obj, 
-#            paste(path_to_folder, "/",
-#                  species_name, "_",
-#                  sf_obj$bird_id[1],
-#                  ".shp", 
-#                  sep = ""), 
-#            delete_layer = T)
-# }
-# 
-# # Use the apply function to save the split sf objects as shapefiles
-# walk(split_sf, save_shapefile)
+# Load the required libraries
+library(sf)
+library(purrr)
+# Define the factor to split the sf object by
+split_by_factor <- "bird_id_num"
+
+# Split the sf object by the factor
+split_sf <- split(df_sbtd_sf, df_sbtd_sf[[split_by_factor]])
+
+# Define a function to save sf objects as shapefiles within the specified working
+# directory
+save_shapefile <- function(sf_obj) {
+  st_write(sf_obj,
+           paste(path_to_folder, "/",
+                 species_name, "_",
+                 sf_obj$bird_id[1],
+                 ".shp",
+                 sep = ""),
+           delete_layer = T)
+}
+
+# Use the apply function to save the split sf objects as shapefiles
+walk(split_sf, save_shapefile)
 
 "OPTION using for loop"
 for(i in 1:max(df_sbtd_sf$bird_id_num)){
