@@ -361,7 +361,13 @@ display: none;
 <p><strong>What does this section cover:</strong></p>
 <ul>
 <li><p>Creating a raster (grid) that can be used for delineation of a
-seaward extension boundary from a colony of breeding seabirds.</p></li>
+seaward extension boundary from a colony of breeding seabirds. This
+raster will:</p></li>
+<li><p>Have a specified cell size (resolution)</p></li>
+<li><p>Cover the location of the colony or colonies with a buffer
+greater than the maximum radius distance.</p></li>
+<li><p>Specify cells at either marine or terrestrial (ice can be
+classified as terrestrial.)</p></li>
 <li><p>This is the required input for the tutorials on how to produce
 outputs for a single seabird colony (2) and multiple seabird colonies
 (3).</p></li>
@@ -374,15 +380,37 @@ outputs for a single seabird colony (2) and multiple seabird colonies
 <p>This document was last updated on <strong>2023-03-27</strong>
 <br></p>
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
-</div>
-<div id="load-packages" class="section level2">
-<h2>Load packages</h2>
 <p><strong>Load required R packages:</strong></p>
 <p>If the packages fail to load, you will need to install the relevant
 packages.</p>
 <pre class="r"><code>## Load libraries ####
 library(sf)
 library(terra)</code></pre>
+<p><strong>Supply input data</strong></p>
+<pre class="r"><code>## Colony data: location, abundance estimate
+d &lt;- read.csv(&quot;AdeliePenguin_example_dataset.csv&quot;)
+head(d)</code></pre>
+<pre><code>##       colony_name colony_size colony_size_min colony_size_max latitude
+## 1    Acuna Island        3079            1880            3079 -44.6370
+## 2    Adams Island         425              76             425  92.5486
+## 3      Cape Adare      428516          169200          428516 170.1999
+## 4    Akarui Point         106             106             211  41.3901
+## 5 Alasheyev Bight        1080            1080            1080  46.1090
+## 6      Ambush Bay       17621           17621           17621 -55.3930
+##   longitude
+## 1  -60.7612
+## 2  -66.5459
+## 3  -71.3063
+## 4  -68.4999
+## 5  -67.6540
+## 6  -63.1840</code></pre>
+<pre class="r"><code>## Land polygon
+
+## Maximum buffer distance (m)
+buffer.dist &lt;- 10000
+
+## Specified resolution of grid cell (m)
+spec_res &lt;- 5000</code></pre>
 </div>
 
 
