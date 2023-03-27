@@ -326,7 +326,7 @@ for (i in 1:length(Colonies)){
                                                   and no distance calculation for cells at sea can be performed") else print(
                                                     "Distance calculation successful")
   
-  #plot(Dist.LandMask)
+  plot(Dist.LandMask)
   
   #-----Change name back to Critchley code------"
   #R <- Dist.LandMask
@@ -341,7 +341,7 @@ for (i in 1:length(Colonies)){
   col_coords <- st_as_sf(data.frame(Lon = Colonies@coords[i,][1], Lat = Colonies@coords[i,][2]),
                          coords = c("Lon", "Lat"), crs=st_crs(basemap))
   max_dist_buffer <- st_buffer(col_coords, dist = MaxDist)
-  #plot(max_dist_buffer, add = T)
+  plot(max_dist_buffer, add = T)
   
   ## any cell further than MaxDist, make it NA
   Dist.LandMask[Dist.LandMask > MaxDist] = NA
@@ -353,8 +353,11 @@ for (i in 1:length(Colonies)){
   
   ## normalise to 0 and 1 probability of occurence
   Dist.LandMask <- -1*(Dist.LandMask/MaxDist)+1 
-  #plot(Dist.LandMask)
-  #plot(max_dist_buffer, add = T)
+  
+  #can change to exponential or other decay function instead. e.g. 
+  
+  plot(Dist.LandMask)
+  plot(max_dist_buffer, add = T)
   
   ## Calculate distance from each cell to the colony
   
@@ -459,7 +462,7 @@ for (i in 1:length(Colonies)){
   cols_df$auto_bearing_sum_dist[i] <- ifelse(mean_angle_s > 0,
                                              mean_angle_s, 360 + mean_angle_s)
   cols_df$auto_bearing_sum_dist_kappa[i] <- as.numeric(vm_s$kappa)
-  #hist(dat_angles)
+  #hist(dat_angles_s)
   #abline(v = cols_df$auto_bearing_sum_dist[i], col = "blue")
 
   #predict von Mises distribution for colony
@@ -475,6 +478,7 @@ for (i in 1:length(Colonies)){
   #plot(radial_lines$vm_s_dist, ylim = c(0,max(radial_lines$vm_s_dist)),
   #     main = "von Mises model (km)")
   #hist(dat_angles_s)
+  #abline(v = cols_df$auto_bearing_sum_dist[i], col = "blue")
   #par(mfrow=c(1,1))
 
   #create projected points around the perimeter using dist sum

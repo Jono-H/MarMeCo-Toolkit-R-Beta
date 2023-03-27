@@ -96,6 +96,10 @@ spec_res = 5000
 #looks alright for EMP, but may be too large for GEP - Beth
 #spec_res = 1000 #added for GEP
 
+
+#could take from % of publuished max dist, and then round them based on a % of the max
+
+
 ## border of antarctica and key islands
 basemap ## manually get bounding box info (bbox)
 
