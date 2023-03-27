@@ -13,7 +13,7 @@
 
 <meta name="date" content="2023-03-27" />
 
-<title>Seaward_extension_introduction.knit</title>
+<title>01_Seaward_extension_create_background_raster.knit</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -356,92 +356,33 @@ display: none;
 
 <!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
 <!--- {-} curly brackets hash means subsections won't get numbered -->
-<div id="seaward-extension-introduction" class="section level1 unnumbered">
-<h1 class="unnumbered">Seaward Extension Introduction</h1>
-<p>This document was last updated on <strong>2023-03-27</strong> <br>
-<br></p>
-<p>This chapter provides guidance and code for delineating a seaward
-extension boundary from a colony of breeding seabirds.</p>
-<p>SEAWARD EXTENSION DEFINITION: These are marine areas immediately
-surrounding seabird breeding colonies. The areas are typically used for
-ecologically relevant behaviours such as rafting, preening, bathing,
-foraging or transiting between foraging trips, depending on a
-species.</p>
-<p>This tutorial uses the example data for Adelie Penguins. For
-information on the original study, see Handley <em>et al.</em> 2021
-Marine Important Bird and Biodiversity Areas for Penguins in Antarctica,
-Targets for Conservation Action. Frontiers in Marine Science 7: 602972.
-<a href="https://doi.org/10.3389/fmars.2020.602972" class="uri">https://doi.org/10.3389/fmars.2020.602972</a></p>
-<p>While this tutorial is designed to allow minimal input from the user,
-users should understand the consequence of choices to input parameters
-while using the functions provided.</p>
-<!--- Add more background and references. Thaxter, Critchey, etc. -->
-<p><br><br> <strong>What does this tutorial cover:</strong></p>
-<ol style="list-style-type: decimal">
-<li><p>Creating a suitable background raster (grid file) for use in the
-seaward extension method</p></li>
-<li><p>Producing a raster density grid and a polygon site boundary
-output for a seabird colony</p></li>
-<li><p>Producing raster density grids and polygon site boundaries
-outputs for a multiple seabird colonies and combine them to produce a
-stack final output.</p></li>
-</ol>
-<!--- Add links to scripts -->
+<div id="seaward-extensions-1-create-background-raster" class="section level2">
+<h2>Seaward Extensions 1: Create Background Raster</h2>
+<p><strong>What does this section cover:</strong></p>
+<ul>
+<li><p>Creating a raster (grid) that can be used for delineation of a
+seaward extension boundary from a colony of breeding seabirds.</p></li>
+<li><p>This is the required input for the tutorials on how to produce
+outputs for a single seabird colony (2) and multiple seabird colonies
+(3).</p></li>
+</ul>
 <!--- Add a space after the line to start the bulleted list -->
 <!--- Placing **text** will make text bold -->
-<p><br><br> <strong>Inputs to this tutorial:</strong></p>
-<ol style="list-style-type: decimal">
-<li><p>Polygon (shapefile) of land</p></li>
-<li><p>Seabird colony location(s) (latitude and longitude)</p></li>
-<li><p>Radius around the colony (distance in km)</p></li>
-<li><p>Colony size(s) (number of breeding pairs)</p></li>
-</ol>
-<p>[Link to input data csv template]</p>
-<p><br><br> <strong>Guidance for inputs:</strong></p>
-<ol style="list-style-type: decimal">
-<li><p>Polygon of land (shapefile)</p>
-<ul>
-<li>The resolution of this file will impact the final results, so it
-needs to be sufficiently fine scale compared to the scale of distance
-used in the method.</li>
-<li>Shapefiles can be downloaded from <a href="https://gadm.org/data.html" class="uri">https://gadm.org/data.html</a></li>
-<li>[Also r natural earth?] <br><br></li>
-</ul></li>
-<li><p>Seabird colony location (latitude and longitude)</p>
-<ul>
-<li>The accuracy of the location will impact the results, so it is
-recommended to check the location before running the method.</li>
-<li>For island colonies, if the colony covers the entire island, the
-centre of the island is suitable. If not, it is better to use a location
-on the correct side of the island. <br><br></li>
-</ul></li>
-<li><p>Radius around the colony (distance in km)</p>
-<ul>
-<li>[Possible distances: maxium, mean maximum, mean]</li>
-<li>[Could be from tracking (e.g. if sample size is too small to use
-track2KBA)]</li>
-<li>[Could be informed by at sea surveys?] <br><br></li>
-</ul></li>
-<li><p>Colony size (number of breeding pairs)</p>
-<ul>
-<li>Could also use Apparently Occupied Sites/Nests</li>
-<li>If the count is a range, could use mean. [Could also run for upper
-and lower estimate to include uncertainty]</li>
-</ul></li>
-</ol>
-<!--- Complete the guidance -->
-<p><br><br> <strong>Output(s) from this tutorial, can be used
-to:</strong></p>
-<ul>
-<li><p>assess data against relevant criteria, such as:</p>
-<ul>
-<li><p>IBA criteria: <a href="http://datazone.birdlife.org/site/ibacriteria" class="uri">http://datazone.birdlife.org/site/ibacriteria</a></p></li>
-<li><p>KBA criteria: <a href="https://www.keybiodiversityareas.org/working-with-kbas/proposing-updating/criteria" class="uri">https://www.keybiodiversityareas.org/working-with-kbas/proposing-updating/criteria</a><br />
-</p></li>
-</ul></li>
-<li><p>or, for identification of sites from animal tracking data to be
-used in alternate spatial planning exercises. <br><br> <br><br></p></li>
-</ul>
+<p>This analysis was performed in <strong>R version 4.1.2
+(2021-11-01)</strong><br />
+</p>
+<p>This document was last updated on <strong>2023-03-27</strong>
+<br></p>
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+</div>
+<div id="load-packages" class="section level2">
+<h2>Load packages</h2>
+<p><strong>Load required R packages:</strong></p>
+<p>If the packages fail to load, you will need to install the relevant
+packages.</p>
+<pre class="r"><code>## Load libraries ####
+library(sf)
+library(terra)</code></pre>
 </div>
 
 

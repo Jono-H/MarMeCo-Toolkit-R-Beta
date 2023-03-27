@@ -1,5 +1,4 @@
 ---
-title: "01_Seaward_extensions_create_background_raster"
 author: "Bethany Clark"
 date: '2023-03-27'
 output: html_document
@@ -9,37 +8,17 @@ output: html_document
 
 <!--- {-} curly brackets hash means subsections won't get numbered -->
 
-# Seaward Extension Guidance {.unnumbered}
+## Seaward Extensions 1: Create Background Raster
 
-PURPOSE OF SCRIPT: Delineate  a seaward extension boundary from a colony of breeding seabirds.
+**What does this section cover:**
 
-SEAWARD EXTENSION DEFINITION: These are marine areas immediately surrounding seabird breeding colonies. The areas are typically used for ecologically relevant behaviours such as rafting, preening, bathing, foraging or transiting between foraging trips, depending on a species.
+-   Creating a raster (grid) that can be used for delineation of a seaward extension boundary from a colony of breeding seabirds.
 
-This tutorial uses the example data for Adelie Penguins. For information on the original study, see Handley et al. 2021 Marine Important Bird and Biodiversity Areas for Penguins in Antarctica, Targets for Conservation Action. Frontiers in Marine Science 7: 602972. https://doi.org/10.3389/fmars.2020.602972
-
-While this tutorial is designed to allow minimal input from the user, users should understand the consequence of choices to input parameters while using the functions provided.
-
-<br> <br>
-
-**What does this tutorial cover:**
-
--   Overview of the Seaward extension method
-
--   Tutorial on how to produce outputs for a single seabird colony and multiple seabird colonies
+-   This is the required input for the tutorials on how to produce outputs for a single seabird colony (2) and multiple seabird colonies (3).
 
 <!--- Add a space after the line to start the bulleted list -->
 
 <!--- Placing **text** will make text bold -->
-
-**Output(s) from this script, can be used to:**
-
--   assess data against relevant criteria, such as:
-
-    -   IBA criteria: <http://datazone.birdlife.org/site/ibacriteria>
-
-    -   KBA criteria: <https://www.keybiodiversityareas.org/working-with-kbas/proposing-updating/criteria>\
-
--   or, for identification of sites from animal tracking data to be used in alternate spatial planning exercises.
 
 This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
 
@@ -58,16 +37,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 If the packages fail to load, you will need to install the relevant packages.
 
 ```{r load-packages, include = TRUE}
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## Load libraries --------------------------------------------------------------
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-library(track2KBA)
-library(tidyverse)
-library(readxl)
+## Load libraries ####
 library(sf)
-library(xlsx)
-library(sp)
-library(gridExtra)
-library(viridis)
+library(terra)
 ```
 
