@@ -362,7 +362,7 @@ warning("Also, before implementing some form of interpolation, you may wish to u
         a speedfilter to clean up outlier location points.")
 
 warning("NOTE: Speedfilters and interpolation generally apply to tracking data from
-        all scenarios, not only for central plance foraging animals.")
+        all scenarios, not only for central place foraging animals.")
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Filter and summary of number of trips after splitting tracks ----
