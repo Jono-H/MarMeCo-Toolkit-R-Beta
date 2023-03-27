@@ -15,9 +15,9 @@ output: html_document
 -   Creating a raster (grid) that can be used for delineation of a seaward extension boundary from a colony of breeding seabirds. This raster will:
   - Have a specified cell size (resolution)
   - Cover the location of the colony or colonies with a buffer greater than the maximum radius distance. 
-  - Specify cells at either marine or terrestrial (ice can be classified as terrestrial.)
+  - Specify cells at either marine or terrestrial (ice can be classified as terrestrial).
 
--   This is the required input for the tutorials on how to produce outputs for a single seabird colony (2) and multiple seabird colonies (3).
+-   This is the required input for the tutorials on how to produce outputs for a single seabird colony [link to 2] and multiple seabird colonies [link to 3].
 
 <!--- Add a space after the line to start the bulleted list -->
 
@@ -60,4 +60,4 @@ spec_res <- 5000
   
 ```
 
-
+**Load functions**
