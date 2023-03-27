@@ -30,8 +30,6 @@ This document was last updated on **`r Sys.Date()`** <br>
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-## Load packages
-
 **Load required R packages:**
 
 If the packages fail to load, you will need to install the relevant packages.

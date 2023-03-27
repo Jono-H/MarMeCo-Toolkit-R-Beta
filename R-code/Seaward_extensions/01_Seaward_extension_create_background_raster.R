@@ -13,7 +13,7 @@
 ## INPUT data (typical): 
 ## Seabird breeding colony location - point or polygon data
 ## Estimate of appropriate buffer size
-## Polygon of land mass for study area                #edit to work with rnaturalearth
+## Polygon of land mass for study area    #edit to work with rnaturalearth
 
 ## OUTPUT data: 
 ## Raster of study area at correct resolution
