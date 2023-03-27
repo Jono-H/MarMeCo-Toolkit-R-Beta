@@ -5,6 +5,8 @@
 library(dplyr)
 library(sf)
 
+#Adelie colony data ####
+
 load("./data-testing/data.penguins.antarctica.Rdata")
 d <- data.penguins.antarctica
 head(d,2)
@@ -31,3 +33,20 @@ head(df)
 
 write.csv(df,"AdeliePenguin_example_dataset.csv",
           row.names = F)
+
+#Basemap shapefile ####
+
+load("./data-testing/Coastline_high_res_polygon_v7.1.Rdata")
+head(Ant_high_shp)
+basemap <- Ant_high_shp
+
+## Land polygon:
+load("./data-testing/Coastline_high_res_polygon_v7.1.Rdata")
+head(Ant_high_shp)
+basemap <- Ant_high_shp
+##plot(st_geometry(basemap)) ## Detailed map - takes time to plot!
+
+## Buffer distance for species
+load("data-testing/Buffer.size.penguins.antarctica.Rdata")
+buffer.dist <- MaxDist_All
+head(buffer.dist)

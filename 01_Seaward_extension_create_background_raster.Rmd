@@ -15,9 +15,9 @@ output: html_document
 -   Creating a raster (grid) that can be used for delineation of a seaward extension boundary from a colony of breeding seabirds. This raster will:
   - Have a specified cell size (resolution)
   - Cover the location of the colony or colonies with a buffer greater than the maximum radius distance. 
-  - Specify cells at either marine or terrestrial (ice can be classified as terrestrial.)
+  - Specify cells at either marine or terrestrial (ice can be classified as terrestrial).
 
--   This is the required input for the tutorials on how to produce outputs for a single seabird colony (2) and multiple seabird colonies (3).
+-   This is the required input for the tutorials on how to produce outputs for a single seabird colony [link to 2] and multiple seabird colonies [link to 3].
 
 <!--- Add a space after the line to start the bulleted list -->
 
@@ -45,6 +45,9 @@ library(terra)
 
 **Supply input data**
 
+[For Marine Toolkit, need to provide guidance on choice of resolution. Currently, 5km aligned with same scale as the Critchley et al. 2018 paper.]
+
+
 ```{r}
 ## Colony data: location, abundance estimate
 d <- read.csv("AdeliePenguin_example_dataset.csv")
@@ -52,12 +55,68 @@ head(d)
 
 ## Land polygon
 
-## Maximum buffer distance (m)
-buffer.dist <- 10000
+## Maximum colony radius distance (m)
+max_colony_radius <- 10000
 
 ## Specified resolution of grid cell (m)
-spec_res <- 5000
+grid_res <- 5000
   
 ```
 
+**If needed, convert colony data to basemap projection**
+
+[Can add an if statement]
+
+```{r}
+
+#need to convert to spatial
+#col_locs_proj <- st_transform(d, crs = st_crs(basemap))
+
+## Plot basemap and colonies to check
+#plot(st_geometry(basemap)) 
+#plot(st_geometry(col_locs_proj), add=T, pch = 19)
+
+```
+
+**Create raster**
+
+```{r}
+#First set a buffer (m) around the colony/colonies + the resolution of the grid to make sure the grid is large enough. 
+raster_buffer <- max_colony_radius + grid_res
+
+#Find the extent of the colony locations
+bounds <- st_bbox(col_locs_proj)
+
+#Create the blank raster grid with the crs of the land polygon
+ras <- terra::rast(xmin = bounds[[1]] - raster_buffer, 
+                   ymin = bounds[[2]] - raster_buffer, 
+                   xmax = bounds[[3]] + raster_buffer, 
+                   ymax = bounds[[4]] + raster_buffer, 
+                   resolution = grid_res,
+                   crs = st_crs(basemap)$wkt)
+
+```
+
+## Fill in raster values with land polygon basemap 
+
+Convert the basemap, currently in polygon format, to a raster and then overlay with the blank raster
+
+NOTE: Operation will take time depending on size of polygon data and detail of borders. i.e. Higher resolution maps take longer to process.
+
+```{r}
+basemap_vector <- vect(basemap)
+mask <- terra::rasterize(basemap_vector, ras)
+ras <- is.na(mask)
+ras[ras==0] <- 2
+plot(ras)
+
+```
+
+## Save the raster for use in the next session
+
+```{r}
+terra::writeRaster(ras, "./data-testing/Antarctica_5x5km/Antarctica_HighRes_5x5km_terra.tif",overwrite=T)
+dir.create("./data-testing/Antarctica_1x1km/")
+terra::writeRaster(ras,"./data-testing/Antarctica_1x1km/Antarctica_HighRes_1x1km_terra.tif",overwrite=T)
+```
 

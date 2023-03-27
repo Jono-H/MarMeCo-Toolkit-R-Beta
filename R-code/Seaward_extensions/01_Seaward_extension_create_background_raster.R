@@ -38,12 +38,11 @@ library(terra)
 ## Input data ----
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-## Colony data: location, abundance estimate, bearing pre-defined
-load("./data-testing/data.penguins.antarctica.Rdata")
-d <- data.penguins.antarctica
-head(d,2)
+## Colony data: location, abundance estimate
+d <- read.csv("AdeliePenguin_example_dataset.csv")
+head(d)
 
-## Basemap:
+## Land polygon:
 load("./data-testing/Coastline_high_res_polygon_v7.1.Rdata")
 head(Ant_high_shp)
 basemap <- Ant_high_shp
@@ -75,7 +74,6 @@ rm(Ant_high_shp, MaxDist_All, data.penguins.antarctica)
 ### Convert colony data to Antarctica / basemap projection
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 col_locs_proj <- st_transform(d, crs = st_crs(basemap))
-
 
 ## PLOT colonies
 plot(st_geometry(col_locs_proj))
