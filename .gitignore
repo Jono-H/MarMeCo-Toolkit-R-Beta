@@ -2,4 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
-seaward_extension_results/
+
+/seaward_extension_results
+/data-testing/tracking-data
+/R-RMarkdown-BookdownChapters/_book
+/R-RMarkdown-BookdownChapters/_bookdown_files
+/R-packages
+/R-code/TrackingData_CleanAndPrepare/old-code
