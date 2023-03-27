@@ -1,0 +1,155 @@
+# Tracking data: Introduction and visualisation
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- If you don't understand what a RMarkdown document is. Stop here. Go learn. -->
+
+<!--- Equally. You must understand the difference between Markdown vs. RMarkdown -->
+
+<!--- Remember, outside of the R code chunks we are now coding in HTML syntax, not R syntax -->
+
+This tutorial uses example data from a project led by the BirdLife International partner in Croatia: BIOM
+
+The citation for this data is: **TBC**
+
+The example data can be downloaded from: **TBC**
+
+<br> <br>
+
+Analyses outlined in this chapter were performed in **`r sessionInfo()$R.version$version.string`**\
+
+This chapter was last updated on **`r Sys.Date()`** <br>
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+## we also specify in the options here to set the overall working directory
+## back to the root directory of the R Project we are working in. We do this
+## because by default , the working directory for R code chunks is the directory 
+## that contains the Rmd document. We don't want this option given our file
+## set up prefers the option of having the working directory specified as that
+## where the R Project is.
+knitr::opts_knit$set(root.dir = "..")
+```
+
+## Introduction to animal tracking data considered in this toolkit
+
+This toolkit focuses on the analysis of data primarily from GPS and PTT devices. Some of the analyses may be extended to data from GLS devices. For all devices, we encourage users to understand the limitations of each device and how these limitations can affect interpretation of animal movement patterns.
+
+For a general introduction into understanding **animal movement patterns**, we refer users to:
+
+- **animal movement references TBC**
+
+For a general introduction into understanding **seabird movement patterns**, we refer users to:
+
+- **seabird movement references TBC**
+
+For a general introduction into understanding **GPS, PTT and GLS technologies**, we refer users to:
+
+- **GPS, PTT, GLS references TBC**
+
+## Lay introduction to GPS, PTT, GLS devices
+
+[Consider from MIRO board: Figure: Location data associated with different device types: GPS | PTT | GLS. Showcasing error associated with devices.
+
+Also: consider general text about accuracy of each device and pros and cons of using different devices.]
+
+
+
+## Load packages
+
+**Load required R packages:**
+
+If the package(s) fails to load, you will need to install the relevant package(s).
+
+```{r load-packages, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Load libraries --------------------------------------------------------------
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## sf package for spatial data analyses (i.e. vector files such as points, lines, polygons)
+library(sf)
+## Tidyverse for data manipulation
+library(tidyverse)
+## ggplot2 for plotting opionts
+library(ggplot2)
+## rnaturalearth package for geographic basemaps in R
+library(rnaturalearth)
+## leaflet package for interactive maps in R
+library(leaflet)
+## lubridate for date time
+library(lubridate)
+
+```
+
+## Load raw tracking data
+
+```{r load-data, include = TRUE}
+
+## Load saved data
+load("data-testing/tracking-data/Tracking_YESH_raw.Rdata")
+
+## view the first two rows of data
+"Consider: do we want a tibble or data.frame?"
+head(yelk,2)
+head(data.frame(yelk),2)
+
+```
+
+## Format to SBTD format
+
+```{r sbtd-foramt, include=TRUE}
+## select relevant columns of data to align with SBTD format
+df_sbtd <- yelk %>% dplyr::mutate(scientific_name = "Puffinus yelkouan",
+                       common_name = "Yelkouan Shearwater",
+                       colony_name = "Lastovo SPA",
+                       device = "GPS",
+                       age= "adult",
+                       sex= "unknown",
+                       breed_stage = "breeding",
+                       breed_status = "breeding") %>% 
+  dplyr::select(scientific_name,
+                common_name,
+                colony_name,
+                device,
+                bird_id,
+                age,
+                sex,
+                breed_stage,
+                breed_status,
+                #"NOTE: Date / Time column from SBTD is actually two separate columns.Will need to consider appropriate action for Toolkit."
+                dttm,
+                latitude,
+                longitude)
+
+
+## review output
+head(data.frame(df_sbtd),2)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## view all data ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## convert data frame to sf spatial object
+df_sbtd_plot <- st_as_sf(df_sbtd, coords = c("longitude", "latitude"), crs=4326) # 4326 = geographic WGS84
+
+## number of datapoints
+nrow(df_sbtd_plot)
+
+## interactive plot
+map.alldata <- leaflet() %>% ## start leaflet plot
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>% 
+  ## plot the points. Note: leaflet automatically finds lon / lat colonies
+  ## Colour accordingly.
+  addCircleMarkers(data = df_sbtd_plot,
+                   radius = 3,
+                   fillColor = "cyan",
+                   fillOpacity = 0.5, stroke = F) 
+
+map.alldata
+
+
+
+```

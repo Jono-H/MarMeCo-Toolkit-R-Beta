@@ -1,0 +1,81 @@
+# Tracking data: Sampling strategy
+
+This chapter was built with **`r sessionInfo()$R.version$version.string`**\
+
+The chapter was last updated on **`r Sys.Date()`** <br>
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+## we also specify in the options here to set the overall working directory
+## back to the root directory of the R Project we are working in. We do this
+## because by default , the working directory for R code chunks is the directory 
+## that contains the Rmd document. We don't want this option given our file
+## set up prefers the option of having the working directory specified as that
+## where the R Project is.
+knitr::opts_knit$set(root.dir = "..")
+```
+
+## Sampling strategy when collecting animal tracking data for seabirds
+
+Animal tracking technology has evolved with respect to size and cost of devices. Hence, the opportunities for collecting tracking data have changed too.
+
+In the past - when devices were much larger and much more expensive - it was likely that few birds were tracked. Tracking typically occurred from sites that were more accessible than others, as opposed to sites specifically being chosen for their larger source populations.
+
+While this type of sampling strategy (selecting sites for accessibility) is often dictated by pragmatic choices needing to be made, or alternate research questions being addressed, outputs from these studies may not necessarily lend themselves well to the identification of globally important sites such as IBAs and KBAs.
+
+Researchers must take sampling strategy into account when considering the type of question they wish to answer in their studies.
+
+Of course, data collected from one study may be used in a different study in future. But the utility of such data being considered for retrospective analyses should be considered appropriately.
+
+## How many birds should you track?
+
+There is no precise answer to this question. The answer in part depends on what kind of question you are trying to answer about a particular species.
+
+If you are tracking a globally threatened species with an extremely small population size, or are tracking a species highly sensitive to devices being deployed on it, then a small number of individuals being tracked may be sufficient to identify where an important site might be.
+
+> However, we suggest that at least 10 birds from a unique dataGroup are tracked before inferring movement patterns about a particular source population.
+
+<!--- using <br> to add a space below the block quotes text before this dataGroup text. -->
+<br>
+**dataGroup**: learn more about how to define a dataGroup in the dataGroup chapter.
+
+## How many years of tracking data should you collect?
+
+Again, there is no precise answer to this question.
+
+Recent evidence, based on GPS tracking of 23 chick-rearing seabird species, suggests that:
+
+-   tracking chick-rearing seabirds across years improves the estimation of at-sea spatial distributions. However, in most cases the information gain is marginal.
+-   samples collected in only one or two years can be useful for the identification of important sites. 
+-   of key importance when considering tracking data for questions related to area-based conservation is whether the sample of tracked individuals is representative at the population level.
+-   when only one or two years of tracking data are available for important site identification, using independent evidence to assess whether conditions were typical of the region and time of year is critical for interpretation of results. 
+-   if conditions were atypical, then further years of sampling may be warranted.
+
+> One to two years of tracking data may be sufficient to inform area-based conservation decisions. However, long-term studies will still be critical to inform how seabirds may respond to envrionmental perturbation.
+
+## How many years of tracking data should you collect for IBA or KBA identification?
+
+[See: KBA Guidelines. Discuss appropriate text with Charlotte]
+
+## Which locations should you track animals from?
+
+A number of factors may dictate which locations you track animals from. Broadly speaking, these factors may include:
+
+-   sites selected depending on the research question you wish to address
+-   sites selected owing to feasibility of accessing sites
+-   sites selected according to species known ecology, and hence ability to capture and deploy (and / or retrieve where necessary) devices on animals
+
+In the context of the marine toolkit, where identification of globally important marine sites is often linked to individuals tracked from a particular source location (i.e. the dataGroup):
+
+> we advise investigators to track animals from source locations where those sites themselves would trigger relevant IBA or KBA criteria.
+
+[Further figure should be provided to better showcase sampling strategy]
+
+## Sampling strategy general recommendations
+
+In general, to support identification of an important site at sea from animal tracking data, we suggest the following:
+
+-   A minimum of 10 individual animals are tracked
+-   Data from the 10 individual animals that are tracked should all represent data from the same movement period within a single year (i.e. ...)

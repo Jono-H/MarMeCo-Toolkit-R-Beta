@@ -13,7 +13,7 @@
 ## INPUT data (typical): 
 ## Seabird breeding colony location - point or polygon data
 ## Estimate of appropriate buffer size
-## Polygon of land mass for study area                #edit to work with rnaturalearth
+## Polygon of land mass for study area    #edit to work with rnaturalearth
 
 ## OUTPUT data: 
 ## Raster of study area at correct resolution
@@ -95,6 +95,10 @@ Currently, 5km aligned with same scale as the Critchley et al. 2018 paper."
 spec_res = 5000
 #looks alright for EMP, but may be too large for GEP - Beth
 #spec_res = 1000 #added for GEP
+
+
+#could take from % of publuished max dist, and then round them based on a % of the max
+
 
 ## border of antarctica and key islands
 basemap ## manually get bounding box info (bbox)
