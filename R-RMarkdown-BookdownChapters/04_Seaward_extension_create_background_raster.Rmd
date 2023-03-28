@@ -32,6 +32,13 @@ This document was last updated on **`r Sys.Date()`**
 
 ```{r seaward-ext-bg-setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+## we also specify in the options here to set the overall working directory
+## back to the root directory of the R Project we are working in. We do this
+## because by default , the working directory for R code chunks is the directory 
+## that contains the Rmd document. We don't want this option given our file
+## set up prefers the option of having the working directory specified as that
+## where the R Project is.
+knitr::opts_knit$set(root.dir = "..")
 ```
 
 **Load required R packages:**
