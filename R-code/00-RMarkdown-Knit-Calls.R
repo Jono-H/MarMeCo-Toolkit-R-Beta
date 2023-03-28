@@ -8,7 +8,7 @@ library(knitr)
 getwd()
 
 ## knit the specific document of interest
-rmarkdown::render("./R-RMarkdown-BookdownChapters/02-TrackingData-SamplingStrategy.Rmd",
+rmarkdown::render("./R-RMarkdown-BookdownChapters/03-TrackingData-Visualisation.Rmd",
                   output_format = "html_document",
                   output_dir = "R-RMarkdown-BookdownChapters/html-test-files")
 

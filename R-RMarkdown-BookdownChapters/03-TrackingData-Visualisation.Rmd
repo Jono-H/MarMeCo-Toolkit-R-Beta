@@ -1,4 +1,4 @@
-# Tracking data: Introduction and visualisation
+# Tracking data: Load data into R and visualise
 
 <!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
 
@@ -12,9 +12,7 @@ This tutorial uses example data from a project led by the BirdLife International
 
 The citation for this data is: **TBC**
 
-The example data can be downloaded from: **TBC**
-
-<br> <br>
+The example data can be downloaded from: **TBC - SBTD**
 
 Analyses outlined in this chapter were performed in **`r sessionInfo()$R.version$version.string`**\
 
@@ -29,33 +27,32 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## because by default , the working directory for R code chunks is the directory 
 ## that contains the Rmd document. We don't want this option given our file
 ## set up prefers the option of having the working directory specified as that
-## where the R Project is.
+## where the R Project is. By specifying double dots (or more), this is like saying
+## go back one directory or more, as required.
 knitr::opts_knit$set(root.dir = "..")
 ```
 
-## Introduction to animal tracking data considered in this toolkit
+<br>
 
-This toolkit focuses on the analysis of data primarily from GPS and PTT devices. Some of the analyses may be extended to data from GLS devices. For all devices, we encourage users to understand the limitations of each device and how these limitations can affect interpretation of animal movement patterns.
+## Description of the example dataset
 
-For a general introduction into understanding **animal movement patterns**, we refer users to:
+<!--- remember, single * is italics, ** is bold -->
 
-- **animal movement references TBC**
+Species tracked: Yelkouan Shearwater (*Puffinus yelkouan*)
 
-For a general introduction into understanding **seabird movement patterns**, we refer users to:
+Life-cycle stage when birds were tracked: chick-rearing
 
-- **seabird movement references TBC**
+Site / source population birds tracked from: Lastovo SPA, Croatia
 
-For a general introduction into understanding **GPS, PTT and GLS technologies**, we refer users to:
+Years birds were tracked over: 2019, 2020
 
-- **GPS, PTT, GLS references TBC**
+Devices birds were tracked with: GPS
 
-## Lay introduction to GPS, PTT, GLS devices
+Device model type: PathTrack nanoFix GPS/UHF transmitters (≤ 5.5 g)
 
-[Consider from MIRO board: Figure: Location data associated with different device types: GPS | PTT | GLS. Showcasing error associated with devices.
+[Figure showcasing Lastovo SPA and source populations]
 
-Also: consider general text about accuracy of each device and pros and cons of using different devices.]
-
-
+<br>
 
 ## Load packages
 
@@ -84,50 +81,151 @@ library(lubridate)
 
 ```
 
+<br>
+
+## Storing, reading, and formatting raw tracking data
+
+<br>
+
+### Storing raw tracking data
+
+The type of device you use will dictate what format your raw tracking data is stored in.
+
+Typically, we will work with **.csv** files.
+
+Good file management is critical when working with large tracking datasets.
+
+[As a guide, the following file structure can support efficient data management]
+
+<br>
+
+### Reading raw tracking data into R / Rstudio
+
+Depending on your file structure, type of raw data, and size of your overall data, we recommend reading data into R in a way that produces a single data frame (or tibble) for all your data required for a specific analysis.
+
+[Example R code for reading in raw tracking data is provided in the Appendix]
+
+<br>
+
+### Format of data
+
+Having data standardised into a common format greatly improves reproducible research, and also the ability for data to be used in other studies.
+
+The primary format we recommend is that of BirdLife International's Seabird Tracking Database:
+-   <https://www.seabirdtracking.org/>
+
+We recognise, however, that this format may not be appropriate for all analyses. Nevertheless, we encourage users to standardise their data into a common format. This will facilitate the ease through which data can be reformatted when necessary for other analyses.
+
+[Decide on best way to show example datasets - either as screen shot images? Or as example data files? Or perhaps as both. Maybe just taking subsets of the data as required.]
+
+<br>
+
 ## Load raw tracking data
+
+Below, we load the raw tracking data obtained for Yelkouan Shearwaters.
+
+To see how this data was loaded into R originally, and merged to create a single data frame, see the example code in the Appendix.
+
+The `load` function supports loading various R file formats. Here we are loading an `.Rdata` file. The file was previously saved with the name of `yelk`. So when we load the file, an object called `yelk` will be loaded into the working environment in R.
 
 ```{r load-data, include = TRUE}
 
-## Load saved data
+## Load the example data for Yelkouan Shearwaters
 load("data-testing/tracking-data/Tracking_YESH_raw.Rdata")
 
 ## view the first two rows of data
-"Consider: do we want a tibble or data.frame?"
+## First view the data in tibble format
 head(yelk,2)
+## Then view the data in data frame format
 head(data.frame(yelk),2)
 
 ```
 
-## Format to SBTD format
+> **tibble vs data frame**: we don't go into the specifics of these different data formats. The key message is that each provides a different way of interacting with, or viewing, data. Both are essentially a mechanism through which to work with tabular data. (i.e. data in rows and columns)
 
-```{r sbtd-foramt, include=TRUE}
-## select relevant columns of data to align with SBTD format
-df_sbtd <- yelk %>% dplyr::mutate(scientific_name = "Puffinus yelkouan",
-                       common_name = "Yelkouan Shearwater",
-                       colony_name = "Lastovo SPA",
-                       device = "GPS",
-                       age= "adult",
-                       sex= "unknown",
-                       breed_stage = "breeding",
-                       breed_status = "breeding") %>% 
-  dplyr::select(scientific_name,
-                common_name,
-                colony_name,
-                device,
-                bird_id,
-                age,
-                sex,
-                breed_stage,
-                breed_status,
-                #"NOTE: Date / Time column from SBTD is actually two separate columns.Will need to consider appropriate action for Toolkit."
-                dttm,
-                latitude,
-                longitude)
+<br>
+
+## Format data to match that of the Seabird Tracking Database
+
+In the example dataset, you will notice that the data is not in the format of that relating to the seabird tracking database.
+
+We can reformat the data by extracting the relevant columns of information, and by adding in any information where it might be missing.
 
 
-## review output
+```{r sbtd-format, include=TRUE}
+
+## First, add relevant columns of information to align with SBTD format
+## the mutate functions allows you to add a new column of information.
+## add the new columns and rename the object to a more standardised name.
+df_sbtd <- yelk %>% dplyr::mutate(dataset_id = "tbc",
+                                  scientific_name = "Puffinus yelkouan",
+                                  common_name = "Yelkouan Shearwater",
+                                  site_name = "Lastovo SPA",
+                                  lat_colony = "tbc",
+                                  lon_colony = "tbc",
+                                  device = "GPS",
+                                  age= "adult",
+                                  sex= "unknown",
+                                  breed_stage = "chick-rearing",
+                                  breed_status = "breeding",
+                                  argos_quality = NA,
+                                  equinox = NA) 
+
+
+## review the changes you have made (i.e. the new columns you have added)
 head(data.frame(df_sbtd),2)
 
+## Now select all the relevant columns to align data with the format of the 
+## seabird tracking database.
+## There are 21 columns of data in the format for the SBTD.
+## Remember, when you use the select function, you can also rename columns simultaneously.
+df_sbtd <- df_sbtd %>% dplyr::select(dataset_id,
+                                     scientific_name,
+                                     common_name,
+                                     site_name,
+                                     ## below for example, we select the column 
+                                     ## called colony_code but rename it to colony_name
+                                     colony_name = colony_code,
+                                     lat_colony,
+                                     lon_colony,
+                                     device,
+                                     bird_id = bird_id,
+                                     track_id = bird_id,
+                                     original_track_id = bird_id,
+                                     age,
+                                     sex,
+                                     breed_stage,
+                                     breed_status,
+                                     date_gmt = dttm,
+                                     time_gmt = dttm,
+                                     latitude,
+                                     longitude,
+                                     argos_quality,
+                                     equinox)
+
+## review the changes again
+head(data.frame(df_sbtd),2)
+```
+
+<br>
+
+## Review of the example data so far
+
+For the following columns, you may notice a few things: 
+<br>
+
+* dataset_id is specified as *tbc*. This is because until data has been loaded into the SBTD, it will not have a unique dataset identification code that would relate to the dataset stored in the SBTD.
+* lat_colony, lon_colony are specified as *tbc*, because we still need to define what the colony coordinates would be for each of locations birds were tagged from.
+* bird_id, track_id, original_track_id, are all specified with the same code. This is because when data is formatted to align with the format of the SBTD:
+  * we have a code that relates to the bird that was tracked (bird_id)
+  * we have a SBTD unique code that relates to each trip undertaken by the bird, when multiple trips are recorded (track_id). Note though, it is often the case that users do not provide data which has been pre-split into unique trips. Therefore, it is often the case that all entries relating to track_id match that of bird_id.
+  * we have a user defined code that can relate to each trip undertaken by the bird. However, the same caveat in the case of track_id applies to this column of data too.
+* argos_quality and equinox are both specified as NA. This is because our data relates to GPS data which does not have an argos_quality estimate (typical of PTT devices) or a measure relating to the equinox (typical of GLS devices).
+
+
+
+
+```{r visualise-data, include=TRUE}
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## view all data ----
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

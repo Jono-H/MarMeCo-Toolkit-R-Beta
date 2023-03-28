@@ -77,5 +77,7 @@ In the context of the marine toolkit, where identification of globally important
 
 In general, to support identification of an important site at sea from animal tracking data, we suggest the following:
 
--   A minimum of 10 individual animals are tracked
--   Data from the 10 individual animals that are tracked should all represent data from the same movement period within a single year (i.e. ...)
+-   A minimum of 10 individual animals are tracked; all from the same source population
+-   Data from the 10 individual animals that are tracked should all represent data from the same life-cycle stage,  within a given year, when it is expected that animals are moving in a similar manner to one another. (e.g. for penguins, you should have tracking information for all 10 individuals from within the chick-guard period)
+
+> the **dataGroup**: [consider text here about the dataGroup]
