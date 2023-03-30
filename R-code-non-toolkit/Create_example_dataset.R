@@ -26,27 +26,15 @@ head(df)
 
 coords <- as.data.frame(st_coordinates(adp))
 
-df$latitude <- coords$X
-df$longitude <- coords$Y
+df$latitude <- coords$Y
+df$longitude <- coords$X
 
 head(df)
 
-write.csv(df,"AdeliePenguin_example_dataset.csv",
+write.csv(df,"data-input-files-bookdown/AdeliePenguin_example_dataset.csv",
           row.names = F)
-
-#Basemap shapefile ####
-
-load("./data-testing/Coastline_high_res_polygon_v7.1.Rdata")
-head(Ant_high_shp)
-basemap <- Ant_high_shp
-
-## Land polygon:
-load("./data-testing/Coastline_high_res_polygon_v7.1.Rdata")
-head(Ant_high_shp)
-basemap <- Ant_high_shp
-##plot(st_geometry(basemap)) ## Detailed map - takes time to plot!
 
 ## Buffer distance for species
 load("data-testing/Buffer.size.penguins.antarctica.Rdata")
-buffer.dist <- MaxDist_All
-head(buffer.dist)
+adp_dist <- subset(MaxDist_All,Species_code == "ADP")
+max(adp_dist$Chick_rearing)

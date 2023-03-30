@@ -3,7 +3,7 @@
 .RData
 .Ruserdata
 
-/input-files/Coastline_high_res_polygon_v7.1
+/data-input-files-bookdown/Coastline_high_res_polygon_v7.1
 /seaward_extension_results
 /data-testing/tracking-data
 /R-RMarkdown-BookdownChapters/_book

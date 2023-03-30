@@ -30,7 +30,7 @@ This document was last updated on **`r Sys.Date()`**
 
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
 
-```{r seaward-ext-bg-setup, include=FALSE}
+```{r swe3-setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## we also specify in the options here to set the overall working directory
 ## back to the root directory of the R Project we are working in. We do this
@@ -39,13 +39,15 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## set up prefers the option of having the working directory specified as that
 ## where the R Project is.
 knitr::opts_knit$set(root.dir = "..")
+
+wd <- getwd()
 ```
 
 **Load required R packages:**
 
 If the packages fail to load, you will need to install them.
 
-```{r seaward-ext-bg-load-packages, include = TRUE}
+```{r swe3-load-packages, include = TRUE}
 ## Load libraries ####
 
 #install.packages("sf")
@@ -59,53 +61,63 @@ library(terra)
 
 [For Marine Toolkit, need to provide guidance on choice of resolution. Currently, 5km aligned with same scale as the Critchley et al. 2018 paper.]
 
+The shapefile is not provide in the github repository as the file size was too large. The file can be downloaded here: https://data.bas.ac.uk/collections/e74543c0-4c4e-4b41-aa33-5bb2f67df389/
 
-```{r seaward-ext-bg-input}
+Alternatively, the output is provided, so this can be used directly in the next section.
+
+
+```{r swe3-input}
 ## Colony data: location, abundance estimate
-d <- read.csv("input-files/AdeliePenguin_example_dataset.csv")
-head(d)
+df <- read.csv(paste0(wd,"/data-input-files-bookdown/AdeliePenguin_example_dataset.csv"))
+head(df)
 
 ## Land polygon
+basemap <- read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
 
 ## Maximum colony radius distance (m)
-max_colony_radius <- 10000
+max_colony_radius <- 149000
 
 ## Specified resolution of grid cell (m)
 grid_res <- 5000
   
 ```
 
-**If needed, convert colony data to basemap projection**
+**Format colony locations as spatial objects**
 
-[Can add an if statement]
+```{r swe3-crs}
+#Set coordinate reference system (CRS) for colony locations 
+col_locs <- st_as_sf(df,coords = c("longitude","latitude"),
+         crs = 4326) 
 
-```{r- seaward-ext-bg-crs}
+#If needed, convert colony data to basemap projection
+if(st_crs(col_locs) != st_crs(basemap)){
+  col_locs_proj <- st_transform(col_locs, crs = st_crs(basemap))
+} else {
+  col_locs_proj <- col_locs
+}
 
-#need to convert to spatial
-#col_locs_proj <- st_transform(d, crs = st_crs(basemap))
-
-## Plot basemap and colonies to check
-#plot(st_geometry(basemap)) 
-#plot(st_geometry(col_locs_proj), add=T, pch = 19)
+#Plot to check
+plot(st_geometry(col_locs_proj), pch = 19, col = "blue")
 
 ```
 
 **Create raster**
 
-```{r seaward-ext-bg-raster}
+```{r swe3-raster}
 #First set a buffer (m) around the colony/colonies + the resolution of the grid to make sure the grid is large enough. 
 raster_buffer <- max_colony_radius + grid_res
 
 #Find the extent of the colony locations
-#bounds <- st_bbox(col_locs_proj)
+bounds <- st_bbox(col_locs_proj)
 
 #Create the blank raster grid with the crs of the land polygon
-#ras <- terra::rast(xmin = bounds[[1]] - raster_buffer, 
-#                   ymin = bounds[[2]] - raster_buffer, 
-#                   xmax = bounds[[3]] + raster_buffer, 
-#                   ymax = bounds[[4]] + raster_buffer, 
-#                   resolution = grid_res,
-#                   crs = st_crs(basemap)$wkt)
+ras <- terra::rast(xmin = bounds[[1]] - raster_buffer, 
+                   ymin = bounds[[2]] - raster_buffer, 
+                   xmax = bounds[[3]] + raster_buffer, 
+                   ymax = bounds[[4]] + raster_buffer, 
+                   resolution = grid_res,
+                   crs = st_crs(basemap)$wkt)
+
 
 ```
 
@@ -115,18 +127,20 @@ Convert the basemap, currently in polygon format, to a raster and then overlay w
 
 NOTE: Operation will take time depending on size of polygon data and detail of borders. i.e. Higher resolution maps take longer to process.
 
-```{r seaward-ext-bg-land-mask}
-#basemap_vector <- vect(basemap)
-#mask <- terra::rasterize(basemap_vector, ras)
-#ras <- is.na(mask)
-#ras[ras==0] <- 2
-#plot(ras)
+```{r swe3-land-mask}
+
+basemap_vector <- vect(basemap)
+mask <- terra::rasterize(basemap_vector, ras)
+ras <- is.na(mask)
+ras[ras==0] <- 2
+plot(ras)
+#plot(st_geometry(col_locs_proj), pch = 19, col = "blue", add = T)
 
 ```
 
-## Save the raster for use in the next session
+## Save the raster for use in the next section
 
-```{r seaward-ext-bg-save}
-#terra::writeRaster(ras,"./seaward-ext-background-raster.tif",overwrite=T)
+```{r swe3-save}
+terra::writeRaster(ras,paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster.tif"), overwrite=T)
 ```
 

@@ -150,3 +150,68 @@ terra::writeRaster(ras, "./data-testing/Antarctica_5x5km/Antarctica_HighRes_5x5k
 dir.create("./data-testing/Antarctica_1x1km/")
 terra::writeRaster(ras, "./data-testing/Antarctica_1x1km/Antarctica_HighRes_1x1km_terra.tif",
                    overwrite=T)
+
+
+#R script for markdown: ####
+##Clear R
+rm(list=ls())
+
+## Load libraries ####
+library(sf)
+library(terra)
+
+## Colony data: location, abundance estimate
+df <- read.csv("data-input-files-bookdown/AdeliePenguin_example_dataset.csv")
+head(df)
+
+## Land polygon
+basemap <- read_sf("data-input-files-bookdown/Coastline_high_res_polygon_v7.1")
+
+## Maximum colony radius distance (m)
+max_colony_radius <- 149000
+
+## Specified resolution of grid cell (m)
+grid_res <- 5000
+
+col_locs <- st_as_sf(df,coords = c("longitude","latitude"),
+                     crs = 4326) 
+if(st_crs(col_locs) != st_crs(basemap)){
+  col_locs_proj <- st_transform(col_locs, crs = st_crs(basemap))
+} else {
+  col_locs_proj <- col_locs
+}
+
+#First set a buffer (m) around the colony/colonies + the resolution of the grid to make sure the grid is large enough. 
+raster_buffer <- max_colony_radius + grid_res
+
+#Find the extent of the colony locations
+bounds <- st_bbox(col_locs_proj)
+
+#Create the blank raster grid with the crs of the land polygon
+ras <- terra::rast(xmin = bounds[[1]] - raster_buffer, 
+                   ymin = bounds[[2]] - raster_buffer, 
+                   xmax = bounds[[3]] + raster_buffer, 
+                   ymax = bounds[[4]] + raster_buffer, 
+                   resolution = grid_res,
+                   crs = st_crs(basemap)$wkt)
+
+basemap_vector <- vect(basemap)
+mask <- terra::rasterize(basemap_vector, ras)
+
+## Simplify raster
+## NOTE: rasterize will set ocean to NA because it 
+## covers an area of cells where
+## there are no polygons, so inverse it and set water to "1"
+plot(mask)
+ras <- is.na(mask)
+
+## land is equal to zero because it is "NOT" NA. 
+## i.e. there is already a polygon there.
+## Set land to 2 to make it more expensive to cross
+ras[ras==0] <- 2
+plot(ras)
+plot(st_geometry(col_locs_proj), pch = 19, col = "blue", add = T)
+
+terra::writeRaster(ras, "data-input-files-bookdown/Seaward_extension_example_raster_Antarctica.tif",
+                   overwrite=T)
+
