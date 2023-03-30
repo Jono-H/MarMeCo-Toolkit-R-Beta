@@ -13,7 +13,7 @@
 
 <meta name="date" content="2023-03-27" />
 
-<title>01_Seaward_extension_create_background_raster.knit</title>
+<title>04_Seaward_extension_create_background_raster.knit</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -361,7 +361,7 @@ display: none;
 <p>This analysis was performed in <strong>R version 4.1.2
 (2021-11-01)</strong><br />
 </p>
-<p>This document was last updated on <strong>2023-03-28</strong>
+<p>This document was last updated on <strong>2023-03-29</strong>
 <br><br></p>
 <p><strong>What does this section cover:</strong></p>
 <ul>
@@ -394,41 +394,45 @@ library(terra)</code></pre>
 <p>[For Marine Toolkit, need to provide guidance on choice of
 resolution. Currently, 5km aligned with same scale as the Critchley et
 al. 2018 paper.]</p>
+<p>The shapefile is not provide in the github repository as the file
+size was too large. The file can be downloaded here:</p>
+<p>Alternatively, the output</p>
 <pre class="r"><code>## Colony data: location, abundance estimate
-d &lt;- read.csv(&quot;input-files/AdeliePenguin_example_dataset.csv&quot;)
+d &lt;- read.csv(&quot;data-input-files-bookdown/AdeliePenguin_example_dataset.csv&quot;)
 head(d)</code></pre>
 <pre><code>##       colony_name colony_size colony_size_min colony_size_max latitude
-## 1    Acuna Island        3079            1880            3079 -44.6370
-## 2    Adams Island         425              76             425  92.5486
-## 3      Cape Adare      428516          169200          428516 170.1999
-## 4    Akarui Point         106             106             211  41.3901
-## 5 Alasheyev Bight        1080            1080            1080  46.1090
-## 6      Ambush Bay       17621           17621           17621 -55.3930
+## 1    Acuna Island        3079            1880            3079 -60.7612
+## 2    Adams Island         425              76             425 -66.5459
+## 3      Cape Adare      428516          169200          428516 -71.3063
+## 4    Akarui Point         106             106             211 -68.4999
+## 5 Alasheyev Bight        1080            1080            1080 -67.6540
+## 6      Ambush Bay       17621           17621           17621 -63.1840
 ##   longitude
-## 1  -60.7612
-## 2  -66.5459
-## 3  -71.3063
-## 4  -68.4999
-## 5  -67.6540
-## 6  -63.1840</code></pre>
+## 1  -44.6370
+## 2   92.5486
+## 3  170.1999
+## 4   41.3901
+## 5   46.1090
+## 6  -55.3930</code></pre>
 <pre class="r"><code>## Land polygon
+basemap &lt;- read_sf(&quot;data-input-files-bookdown/Coastline_high_res_polygon_v7.1&quot;)
 
 ## Maximum colony radius distance (m)
-max_colony_radius &lt;- 10000
+max_colony_radius &lt;- 149000
 
 ## Specified resolution of grid cell (m)
 grid_res &lt;- 5000</code></pre>
-<p><strong>If needed, convert colony data to basemap
-projection</strong></p>
+<p><strong>Format colony locations as spatial objects</strong></p>
 <p>[Can add an if statement]</p>
-<p>```{r- seaward-ext-bg-crs}</p>
-<p>#need to convert to spatial #col_locs_proj &lt;- st_transform(d, crs
-= st_crs(basemap))</p>
-</div>
-<div id="plot-basemap-and-colonies-to-check" class="section level2">
-<h2>Plot basemap and colonies to check</h2>
-<p>#plot(st_geometry(basemap)) #plot(st_geometry(col_locs_proj), add=T,
-pch = 19)</p>
+<p>```{r- swe1-crs} #Set coordinate reference system (CRS) for colony
+locations col_locs &lt;- st_as_sf(df,coords = c(“longitude”,“latitude”),
+crs = 4326)</p>
+<p>#If needed, convert colony data to basemap projection
+if(st_crs(col_locs) != st_crs(basemap)){ col_locs_proj &lt;-
+st_transform(col_locs, crs = st_crs(basemap)) } else { col_locs_proj
+&lt;- col_locs }</p>
+<p>#Plot to check plot(st_geometry(col_locs_proj), pch = 19, col =
+“blue”)</p>
 <pre><code>
 **Create raster**
 
@@ -440,7 +444,7 @@ raster_buffer &lt;- max_colony_radius + grid_res
 #Find the extent of the colony locations
 #bounds &lt;- st_bbox(col_locs_proj)
 
-#Create the blank raster grid with the crs of the land polygon
+#Create the blank raster grid with the crs of the basemap land polygon
 #ras &lt;- terra::rast(xmin = bounds[[1]] - raster_buffer, 
 #                   ymin = bounds[[2]] - raster_buffer, 
 #                   xmax = bounds[[3]] + raster_buffer, 
@@ -456,14 +460,17 @@ then overlay with the blank raster</p>
 detail of borders. i.e. Higher resolution maps take longer to
 process.</p>
 <pre class="r"><code>#basemap_vector &lt;- vect(basemap)
+
+#The following line of code can take a long time to run
 #mask &lt;- terra::rasterize(basemap_vector, ras)
+
 #ras &lt;- is.na(mask)
 #ras[ras==0] &lt;- 2
 #plot(ras)</code></pre>
 </div>
-<div id="save-the-raster-for-use-in-the-next-session" class="section level2">
-<h2>Save the raster for use in the next session</h2>
-<pre class="r"><code>#terra::writeRaster(ras,&quot;./seaward-ext-background-raster.tif&quot;,overwrite=T)</code></pre>
+<div id="save-the-raster-for-use-in-the-next-section" class="section level2">
+<h2>Save the raster for use in the next section</h2>
+<pre class="r"><code>#terra::writeRaster(ras,&quot;./seaward-ext-background-raster.tif&quot;, overwrite=T)</code></pre>
 </div>
 
 
