@@ -2,12 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-<<<<<<< HEAD
 /input-files/Coastline_high_res_polygon_v7.1
-=======
-
 /data-input-files-bookdown/Coastline_high_res_polygon_v7.1
->>>>>>> 50b467a779bcda2e9110d997fc0ff9e1bb955d40
 /seaward_extension_results
 /data-testing/tracking-data
 /R-RMarkdown-BookdownChapters/_book
