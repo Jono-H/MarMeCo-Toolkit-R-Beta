@@ -1,8 +1,4 @@
-<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
-
-<!--- {-} curly brackets hash means subsections won't get numbered -->
-
-# Track2KBA Guidance {.unnumbered}
+# Track2KBA Guidance
 
 <!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
 

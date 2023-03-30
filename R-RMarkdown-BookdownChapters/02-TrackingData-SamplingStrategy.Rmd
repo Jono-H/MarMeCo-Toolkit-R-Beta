@@ -6,7 +6,7 @@ The chapter was last updated on **`r Sys.Date()`** <br>
 
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
 
-```{r setup, include=FALSE}
+```{r track-sample-setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## we also specify in the options here to set the overall working directory
 ## back to the root directory of the R Project we are working in. We do this
@@ -38,8 +38,8 @@ If you are tracking a globally threatened species with an extremely small popula
 > However, we suggest that at least 10 birds from a unique dataGroup are tracked before inferring movement patterns about a particular source population.
 
 <!--- using <br> to add a space below the block quotes text before this dataGroup text. -->
-<br>
-**dataGroup**: learn more about how to define a dataGroup in the dataGroup chapter.
+
+<br> **dataGroup**: learn more about how to define a dataGroup in the dataGroup chapter.
 
 ## How many years of tracking data should you collect?
 
@@ -48,9 +48,9 @@ Again, there is no precise answer to this question.
 Recent evidence, based on GPS tracking of 23 chick-rearing seabird species, suggests that:
 
 -   tracking chick-rearing seabirds across years improves the estimation of at-sea spatial distributions. However, in most cases the information gain is marginal.
--   samples collected in only one or two years can be useful for the identification of important sites. 
+-   samples collected in only one or two years can be useful for the identification of important sites.
 -   of key importance when considering tracking data for questions related to area-based conservation is whether the sample of tracked individuals is representative at the population level.
--   when only one or two years of tracking data are available for important site identification, using independent evidence to assess whether conditions were typical of the region and time of year is critical for interpretation of results. 
+-   when only one or two years of tracking data are available for important site identification, using independent evidence to assess whether conditions were typical of the region and time of year is critical for interpretation of results.
 -   if conditions were atypical, then further years of sampling may be warranted.
 
 > One to two years of tracking data may be sufficient to inform area-based conservation decisions. However, long-term studies will still be critical to inform how seabirds may respond to envrionmental perturbation.
@@ -78,6 +78,6 @@ In the context of the marine toolkit, where identification of globally important
 In general, to support identification of an important site at sea from animal tracking data, we suggest the following:
 
 -   A minimum of 10 individual animals are tracked; all from the same source population
--   Data from the 10 individual animals that are tracked should all represent data from the same life-cycle stage,  within a given year, when it is expected that animals are moving in a similar manner to one another. (e.g. for penguins, you should have tracking information for all 10 individuals from within the chick-guard period)
+-   Data from the 10 individual animals that are tracked should all represent data from the same life-cycle stage, within a given year, when it is expected that animals are moving in a similar manner to one another. (e.g. for penguins, you should have tracking information for all 10 individuals from within the chick-guard period)
 
 > the **dataGroup**: [consider text here about the dataGroup]
