@@ -463,7 +463,7 @@ df_sbtd_sf <- df_sbtd %>%
 for(i in unique(df_sbtd$scientific_name)){
   
   ## subset the data taking the track information for each unique species
-  temp_species <- df_sbtd_sf %>% dplyr::filter(scientific_name == unique(df_sbtd$scientific_name)[i])
+  temp_species <- df_sbtd_sf %>% dplyr::filter(scientific_name == i)
   
   ## create new folder within current working directory where you will save data
   ## first create the name of the species and the file path you need
@@ -522,6 +522,67 @@ Depending on the amount of data you have, you can often initially a perform a st
 
 Below, outlines options for visualising individual animal tracks.
 
+[NEED TO CREATE STATIC PLOT OUTPUTS FIRST - With colours denoting start and end points of tracks]
 
+```{r track-vis-individual-shapefile, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Save raw tracking data for each individual as shapefile for viewing in GIS software ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## reminder on data structure
+head(data.frame(df_sbtd_sf),2)
+
+for(i in 1:max(df_sbtd_sf$bird_id_num)){
+  
+  ## subset the data taking the track information for each unique bird tagged
+  temp_individual <- df_sbtd_sf %>% dplyr::filter(bird_id_num == i)
+  
+  ## create new folder (if needed) within current working directory where you will save data
+  ## first create the name of the species and the file path you need
+  ## also use gsub to replace spaces within character strings (words) with a "-"
+  species_name <- gsub(" ", "-", temp_individual$scientific_name[1]) 
+  
+  ## print the name for checking
+  print(species_name)
+  
+  ## then create the new folder within current working directory
+  path_to_folder <- paste("./data-testing/tracking-data/",
+                          species_name,
+                          sep="")
+  
+  ## print the file path name for checking
+  print(path_to_folder)
+  
+  ## Check if folder exists, and if it does not, then make a new folder
+    if (!file.exists(path_to_folder)) {
+    # If it does not exist, create a new folder
+    dir.create(path_to_folder)
+    print(paste("Created folder:", path_to_folder))
+    } else {
+    # do nothing, but let us know the folder exists already
+    print(paste("Folder already exists:", path_to_folder))
+    }
+  
+  ## write the spatial data. Label it by species and bird_id  
+  st_write(temp_individual, 
+           paste(path_to_folder, "/",
+                 species_name, "_",
+                 temp_individual$bird_id[1],
+                 ".shp", 
+                 sep = ""), 
+           delete_layer = T)
+  ## print a loop progress message
+  print(paste("Loop ", i, " of ", max(df_sbtd_sf$bird_id_num), sep = ""))
+    
+  ## remove the temporary file at the end of each loop
+  rm(temp_individual)
+}
+
+```
+
+### When to remove or salvage data for a track individual
+
+[Examples / details to be added]
 
 
