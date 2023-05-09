@@ -1,0 +1,939 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Tracking data: Interpolate / speed filter
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- If you don't understand what a RMarkdown document is. Stop here. Go learn. -->
+
+<!--- Equally. You must understand the difference between Markdown vs. RMarkdown -->
+
+<!--- Remember, outside of the R code chunks we are now coding in HTML syntax, not R syntax -->
+
+**This chapter is a continuation from the previous chapter viewing and
+cleaning tracking data relating to individual trips from tracked animals
+exhibiting central place foraging behaviour. It requires the outputted
+data file from the previous chapter**
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r interpolation-setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+## we also specify in the options here to set the overall working directory
+## back to the root directory of the R Project we are working in. We do this
+## because by default , the working directory for R code chunks is the directory 
+## that contains the Rmd document. We don't want this option given our file
+## set up prefers the option of having the working directory specified as that
+## where the R Project is. By specifying double dots (or more), this is like saying
+## go back one directory or more, as required.
+knitr::opts_knit$set(root.dir = "..")
+```
+
+<br>
+
+## Description of data
+
+<!--- remember, single * is italics, ** is bold -->
+
+The example data for this chapter relates to the previous. A key step
+was the splitting of tracking data into individual trips using the
+`tripSplit()` function.
+
+> Remember, you also removed all points that were a specified buffer
+> distance away from the colony. This supports application of
+> interpolation methods to individual trips.
+
+> NOTE: if your animal visits land at several other locations beyond the
+> colony, you may need to consider appropriate action for more advanced
+> interpolation methods.
+
+## Goal of chapter:
+
+Support further cleaning of tracking data by applying speed filters and
+interpolation methods.
+
+## Interpolation
+
+If you have gaps in your tracking data, you need to fill these gaps for
+the purpose of the track2KBA protocol. It's likely you will need to do
+this for many other tracking data analyses.
+
+Broadly speaking, there are two key ways to fill the gaps in your
+tracking data, a process known as interpolation.
+
+These two ways include: - Simpler linear interpolation - More advanced
+interpolation options that try account for where the animal could have
+moved (e.g. CRAWL)
+
+> Typically, for flying seabirds, where gaps in tracking data are less
+> likely because birds do not typically dive underwater for durations as
+> long as diving seabirds, linear interpolation should serve as a
+> suitable starting point.
+
+> More advanced interpolation methods may be required for diving
+> seabirds, or other diving marine predators.
+
+## Load packages
+
+**Load required R packages:**
+
+If the package(s) fails to load, you will need to install the relevant
+package(s).
+
+```{r interpolation-load-packages, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Load libraries --------------------------------------------------------------
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"Had to install R version: R version 4.2.2 (2022-10-31 ucrt) for aniMotum"
+## Options to install aniMotum package for animal track interpolation
+## aniMotum: https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.14060
+#install.packages('aniMotum', repos = c('https://ianjonsen.r-universe.dev', 'https://cloud.r-project.org'))
+# may need to install aniMotum after downloading using: devtools::install_local(package.zip)
+#install.packages('TMB', type = 'source')
+library("aniMotum")
+## sf package for spatial data analyses (i.e. vector files such as points, lines, polygons)
+library(sf)
+## Tidyverse for data manipulation
+library(tidyverse)
+## ggplot2 for plotting opionts
+library(ggplot2)
+## rnaturalearth package for basemaps in R
+library(rnaturalearth)
+## leaflet package for interactive maps in R
+#install.packages("leaflet")
+library(leaflet)
+##
+library(purrr)
+library(furrr)
+#install.packages("track2KBA")
+library(track2KBA)
+## for date time
+library(lubridate)
+## for stats
+library(stats)
+## speed filter
+library(trip)
+## linear interpolation
+library(adehabitatLT)
+
+```
+
+<br>
+
+## Input parameters for chapter tutorial
+
+Here we define input parameters needed for sections of the code later in
+this tutorial.
+
+Depending on how your data is set up, you should not need to define any
+further input parameters.
+
+```{r interpolation-parameters, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Specify projections / store needed CRS definitions as variables ----
+## SEE: https://epsg.io/
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## world - unprojected coordinates
+wgs84 <- st_crs("EPSG:4326")
+
+## Croatia -  projected coordinates
+htrs96 <- st_crs("EPSG:3765")
+
+## Source a world map from the rnaturalearth R package
+## see details of function to change the type of map you get
+worldmap <- rnaturalearth::ne_download(scale = "large",
+                                       type = "countries",
+                                       category = "cultural",
+                                       destdir = tempdir(),
+                                       load = TRUE,
+                                       returnclass = "sf")
+
+```
+
+<br>
+
+## Load input example data and prepare for track2KBA R package protocol
+
+Loading the input example data
+
+```{r interpolation-load-data, include = TRUE}
+
+## Load the example data for Yelkouan Shearwaters
+load("data-testing/tracking-data/Tracking_YESH_raw_step3.Rdata")
+
+## view the first two rows of data
+## First view the data in tibble format
+head(tracks,2)
+## Then view the data in data frame format
+head(data.frame(tracks),2)
+
+```
+
+## Interpolation methods differences
+
+We will consider some of the different interpolation methods: - Linear
+interpolation - CRAWL interpolation
+
+### Get example data for testing
+
+Based on some previous exploration of the data, here are some individual
+trips that provide a basis of example data to understand impact of
+different inteprolation methods.
+
+> NOTE to JONO: Consider impact of previous buffer choice on selection of final number of trips.
+
+[Should we apply relative at-sea buffer at the tripSplit step or later on. Later seems to make sense to me. But this also means we might remove what are considered invidual trips if we increase the buffer size.]
+
+```{r interpolation-Check-number-of-trips, include = TRUE}
+
+## Checking number of trips in data
+length(unique(tracks$tripID))
+
+```
+
+Example trips to try:
+
+-   278: a good track. Athough technically colony location might be wrong given buffer appied above.
+
+-   305: a good track. Seems feasible.
+
+-   339: a track that goes over land supposedly.
+
+-   252: dodgey track with too few points most likely.
+
+-   210: reasonable track, but some big gaps in data likely when birds
+    commuting.
+
+-   273: obvious location error with single point extremely far away."
+
+
+> Change the input parameter below to select a new unique trip
+
+```{r interpolation-select-trip, include = TRUE}
+
+## Input parameter for selecting unique trips
+i= 273
+
+
+## subset the data from a unique trip
+bird_track <- data.frame(tracks) %>% dplyr::filter(tripID == unique(tracks$tripID)[i])
+## add a column indicating start and end of tracks
+bird_track <- bird_track %>% mutate(nlocs = 1:nrow(bird_track)) %>% 
+  mutate(track_segment = if_else(nlocs <= 10, "track.start","track.journey")) %>% 
+  ## note: if you have a track with less than 20 points, then you will overwrite 
+  ## some of the previous data.
+  mutate(track_segment = if_else(nlocs %in% (nrow(bird_track)-9):(nrow(bird_track)),"track.end",track_segment)) %>%
+  ## add a column indicating colour for start and end of tracks
+  ## colours from: https://colorbrewer2.org/#type=qualitative&scheme=Set2&n=3
+  mutate(track_colour = if_else(nlocs <= 10, "#66c2a5","#8da0cb")) %>% 
+  mutate(track_colour = if_else(nlocs %in% (nrow(bird_track)-9):(nrow(bird_track)),"#fc8d62",track_colour))
+
+
+head(data.frame(bird_track),12)
+tail(data.frame(bird_track),12)
+
+## plot the tracks using leaflet package in R.
+map <- leaflet() %>% ## start leaflet plot
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>% 
+  ## plot the points. Note: leaflet automatically finds lon / lat colonies
+  ## label by nloc (location) number. Colour accordingly.
+  addCircleMarkers(data = bird_track,
+                   label = bird_track$nlocs, radius = 3,
+                   fillColor = bird_track$track_colour,
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between points
+  addPolylines(lng = bird_track$Longitude,
+               lat = bird_track$Latitude, weight = 1,
+               color = "white") 
+map
+
+
+## plot with legend
+map %>% 
+  addLegend(colors = unique(bird_track$track_colour),
+            labels = unique(bird_track$track_segment))
+
+```
+
+
+## Speed filter & linear interpolation
+
+First apply the simpler cleaning step to the data:
+
+-   McConnel Speed Filter (i.e. remove points based on unrealistic travel speeds)
+
+
+-   Linear interpolation (i.e. add missing points on a straight line between known points)
+
+
+```{r interpolation-linear, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Speed filter / linear interpolation ----
+## For flying seabirds: CRAWL may not be best bet - linear interpolation may be better."
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## review example data
+head(bird_track,2)
+
+## remove any erroneous locations due to speed use the McConnel Speed Filter 
+##from the trip package
+trip_obj <- bird_track %>% 
+  #group_by(tripID) %>% 
+  dplyr::select(x = X, 
+                y = Y, 
+                DateTime, 
+                everything()) %>% 
+  trip()
+
+## McConnel Speedilter -----
+## apply speedfilter and creat data frame
+trip_obj$Filter <- speedfilter(trip_obj, max.speed = 100)  # speed in km/h
+trip_obj <- data.frame(trip_obj)
+head(trip_obj,2)
+
+## How many locations were removed with speed filter?
+nrow(subset(trip_obj, trip_obj$Filter == F))
+
+## plot the original data AND McConnel speed filtered removed values
+map %>% addCircleMarkers(data = subset(trip_obj, trip_obj$Filter == F),
+                   #label = bird_track_gaps$nlocs, 
+                   radius = 5,
+                   fillColor = "black",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  addLegend(colors = "black",
+            labels = "McConnel removed values")
+
+## Keep only filtered coordinates - after checking dimensions of other outputs again
+dim(trip_obj)
+dim(bird_track)
+trip_obj <- subset(trip_obj,trip_obj$Filter==TRUE)
+dim(trip_obj)
+
+## Linear interpolation -----
+## Apply linear interpolation step to speed filtered only data
+
+## create ltraj object
+trip_lt <- as.ltraj(xy = bind_cols(x = trip_obj$x, 
+                                   y = trip_obj$y),
+                    date = trip_obj$DateTime,
+                    id = trip_obj$tripID)
+
+## Linearly interpolate/re-sample tracks every 30 minutes (specified in seconds)
+trip_interp <- redisltraj(trip_lt, 1800, type="time")
+head(trip_interp)
+
+
+## convert back into format for track2KBA - dataframe for now
+trip_interp <- ld(trip_interp) %>% 
+  dplyr::mutate(Longitude = x,
+                Latitude = y)
+head(trip_interp,2)
+
+```
+
+[CONSIDER BEST WAY TO ADD RELATED METADATA BACK. Holding script below for now]
+
+
+```{r interpolation-add-meta, include = TRUE}
+
+## Select key data for track2KBA
+"update"
+#head(tracks_yelk)
+#yelk_interp <- yelk_interp %>% dplyr::select(X = x,Y =y, DateTime = date, ID = id)
+
+## update metadata that was lost during interpolation steps
+"update"
+#yelk_meta <- tracks_yelk %>% 
+#  data.frame() %>% 
+#  dplyr::select(ID, colony_code) %>% 
+#  distinct(ID, colony_code)
+
+## update for track2KBA
+"update"
+#yelk_interp <- left_join(yelk_interp, yelk_meta, by = "ID") %>% 
+#  st_as_sf(coords = c("X", "Y"), crs = wgs84)
+
+```
+
+
+## Plot: speed filtered and linear interpolation data
+
+```{r interpolation-plot-speed-linear, include=TRUE}
+
+## plot speedfilter & linear interpolation
+map %>% ## Speed Filtered and Linear interpolated
+  addCircleMarkers(data = trip_interp,
+                   #label = bird_track$nlocs, 
+                   radius = 3,
+                   fillColor = "cyan",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between Speed Filtered and Linear interpolated points
+  addPolylines(lng = trip_interp$Longitude,
+               lat = trip_interp$Latitude, weight = 1,
+               color = "cyan")
+
+
+```
+
+[Review advice on whether linear interpolation is suitable]
+
+## Advanced interpolation
+
+[Possibly need to move this to appendix instead. COnsider feedback]
+
+Advanced interpolation methods such as CRAWL have been simplified with the `aniMotum` R package.
+
+We will apply the steps in the `aniMotum` R package to apply CRAWL interpolation to the data.
+
+```{r interpolation-animotum-all, include = TRUE}
+
+## CRAWL interpolation with aniMotum R package:
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 1: Format the data"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+head(bird_track,2)
+
+## format the data into format required for aniMotum
+## NOTE: The format varies for Argos, GPS and GLS data - format accordingly
+bird_track_am <- bird_track %>% mutate(lc = "G") %>% 
+  dplyr::select(id = "tripID",
+                date = "dttm",
+                lc,
+                lon = "Longitude",
+                lat = "Latitude")
+
+## review the newly formatted data
+head(bird_track_am,20)
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 2: Fit the model"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+"When fitting the model, there are some useful parameters to consider"
+## fit the state-space model
+## SEE the help file: ?fit_ssm, to understand some of the arguments within the function
+## NOTE: the function can do 3 things simultaneously: data formatting step, a pre-filtering step, and the actual model fitting
+## INPUT: data.frame, tibble or sf-tibble of observations, depending on the tracking data type
+fit <- fit_ssm(bird_track_am,
+               ## specify what kind of model you want to fit. See details about different model types in paper.
+               model = "crw",
+               ## specify the speed at which data points could be considered outlier points (in m/s)
+               vmax = 27,
+               ## time.step in hours - specify time.step of new values to be predicted (interpolation)
+               time.step = 0.5,
+               ## turning angle/s in degrees. remove locations with turning angles set between intervals
+               ## default values are not 0,0 (which will not do anything), but rather 15,25
+               ang = c(0, 0),
+               ## step lengths in km - check implications for GPS vs. Argos data filtering
+               ## defaults 2500,5000
+               distlim = c(2500, 5000))
+
+"NOTE: Depending on how you prefilter your data before running fit_ssm, you may
+want to consider changing some of the function parameters. E.g. you might indicate
+fit.to.subset = F, if you have filtered your data already and are sure all your 
+locations are true locations."
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 3: Review the model fit"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## review the model summary
+## See: https://ianjonsen.github.io/aniMotum/articles/Overview.html
+"Check that converged and phHess were True. NOTE: I'm not sure what it means if they are false"
+fit
+"Review overall summaries and SSM details for each individual. Again, not entirely sure what all the important bits are"
+summary(fit)
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 4: Review the different tabular ouputs after fitting the model"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## data.frame of SSM fitted values (location estimates corresponding to the observation times)
+floc.fitted <- grab(fit, what = "fitted")
+
+## data.frame of predicted values (corresponding to locations predicted at regular time.step intervals)
+floc.predicted <- grab(fit, what = "predicted")
+
+## data.frame of original data with a column indicating which locations to keep or not
+floc.data <- grab(fit, what = "data")
+
+## review the new data frames you get and your original data
+head(data.frame(floc.fitted),2)
+head(data.frame(floc.predicted),2)
+head(data.frame(floc.data),2)
+head(data.frame(bird_track),2)
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 5: Plot the different tabular ouputs after fitting the model"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## plot the FITTED values over original data (i.e. locations used for fitting the model)
+map %>% addCircleMarkers(data = floc.fitted,
+                         #label = bird_track_gaps$nlocs, 
+                         radius = 3,
+                         fillColor = "lightgreen",
+                         fillOpacity = 0.5, stroke = F) %>% 
+  addLegend(colors = "lightgreen",
+            labels = "fitted values")
+
+## plot the PREDICTED values over original data (i.e. locations predcited from the model)
+map %>% addCircleMarkers(data = floc.predicted,
+                         #label = bird_track_gaps$nlocs, 
+                         radius = 3,
+                         fillColor = "cyan",
+                         fillOpacity = 0.5, stroke = F) %>% 
+  addLegend(colors = "cyan",
+            labels = "predicted values")
+
+
+## plot the REMOVED values over original data (i.e. locations that were removed from the prefiltering step)
+map %>% addCircleMarkers(data = subset(floc.data, floc.data$keep == F),
+                         #label = bird_track_gaps$nlocs, 
+                         radius = 3,
+                         fillColor = "red",
+                         fillOpacity = 0.5, stroke = F) %>% 
+  addLegend(colors = "red",
+            labels = "removed values")
+
+
+## plot the PREDICTED AND REMOVED values over original data (i.e. locations that were removed from the prefiltering step)
+map %>% addCircleMarkers(data = floc.predicted,
+                       #label = bird_track_gaps$nlocs, 
+                       radius = 3,
+                       fillColor = "cyan",
+                       fillOpacity = 0.5, stroke = F) %>% 
+  addCircleMarkers(data = subset(floc.data, floc.data$keep == F),
+                   #label = bird_track_gaps$nlocs, 
+                   radius = 5,
+                   fillColor = "red",
+                   fillOpacity = 0.5, stroke = F)
+
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 6: Visualising a model fit"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+# plot time-series of the fitted values
+plot(fit, what = "fitted", type = 1, pages = 1)
+
+# plot time-series of the predcited values
+plot(fit, what = "predicted", type = 1, pages = 1)
+
+# plot fitted values as a 2-d track
+plot(fit, what = "predicted", type = 2, pages = 1,
+     ## 95 % confidence ellipses (orange-filled ellipses) around the predicted 
+     ## values are also displayed, but can be faded away by choosing a low alpha value
+     alpha = 0.05,
+     ## Observations that failed the prefilter stage are displayed (black x’s) 
+     ## by default but can be turned off with the argument outlier = FALSE)
+     outlier = T)
+
+# plot fitted values as a 2-d track
+plot(fit, what = "predicted", type = 2, pages = 1,
+     ## 95 % confidence ellipses (orange-filled ellipses) around the predicted 
+     ## values are also displayed, but can be faded away by choosing a low alpha value
+     alpha = 0.00,
+     ## Observations that failed the prefilter stage are displayed (black x’s) 
+     ## by default but can be turned off with the argument outlier = FALSE)
+     outlier = T)
+
+"CONSIDER: How can we help user to decide whether their data is of high enough
+quality or not for a track2KBA styled analysis? Perhaps the outputs from 
+grab(fit, what = predicted) can be of help? Here, see an indication of standard 
+errors around predicted locations via (x.se, y.se in km)"
+
+plot(floc.predicted$x.se)
+plot(floc.predicted$y.se)
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 7: Further assessment of model fit"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## SEE: https://ianjonsen.github.io/aniMotum/articles/SSM_validation.html
+
+"Does this assessment take into account all tracks simultanesouly? Or does it only
+assess each track individually? What are the implications for this assessment in
+the context of track2KBA? Not sure..."
+
+# use patchwork package to arrange plot.osar options
+#library(patchwork)
+# calculate & plot residuals
+"NOTE: Computationally intensive! Takes time!!"
+#res.rw <- osar(fit)
+
+#(plot(res.rw, type = "ts") | plot(res.rw, type = "qq")) / 
+#  (plot(res.rw, type = "acf") | plot_spacer())
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 8: Assess potential behaviours along track: Move_persistence_models"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## SEE: https://ianjonsen.github.io/aniMotum/articles/Move_persistence_models.html
+
+## NOTE: You can fit this model in two ways
+
+## SEE: Alternate script: tracking_CleanAndPrepareData2_AllTracks_aniMotumAllSteps
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 9: Reroute tracks that went overland back via the sea"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## NOTE: This will reroute the point locations only! So if you have a very detailed
+## coastline, then it may appear the animals still move over land when plotting lines 
+## between points. The success of the analysis is also dependent on the underlying
+## basemap used. The natural earth map (used by default) is good, but not very finely
+## detailed. i.e. resolution could be higher
+
+
+## install packages
+#install.packages("pathroutr", repos = "https://jmlondon.r-universe.dev")
+library(pathroutr) # for rerouting tracks
+#install.packages("devtools")
+#devtools::install_github("ropensci/rnaturalearthhires")
+library(rnaturalearthhires) # for higher resolution natural earth map
+
+## reroute the track using the predicted values of the previously fitted model
+fit.reroute <- route_path(fit,
+                  what = "predicted",
+                  map_scale = 10,
+                  dist = 10000,
+                  append = T)
+
+## data.frame of rerouted values 
+## NOTE: Some of these locations may not be ecologically realistic anymore
+## i.e. if you were to recalculate travel speeds, they may be unrealistic
+## must consider trade-off of approach accordingly
+floc.predicted.reroute <- grab(fit.reroute, what = "rerouted")
+
+## review data
+head(data.frame(floc.predicted),2)
+head(data.frame(floc.predicted.reroute),2)
+
+## plot original vs predicted vs re-routed
+map %>% 
+## Predicted
+  addCircleMarkers(data = floc.predicted,
+                   #label = bird_track$nlocs, 
+                   radius = 5,
+                   fillColor = "green",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between predicted points
+  addPolylines(lng = floc.predicted$lon,
+               lat = floc.predicted$lat, weight = 1,
+               color = "green") %>% 
+  ## RE-ROUTED
+  addCircleMarkers(data = floc.predicted.reroute,
+                   #label = bird_track$nlocs, 
+                   radius = 3,
+                   fillColor = "red",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between re-routed points
+  addPolylines(lng = floc.predicted.reroute$lon,
+               lat = floc.predicted.reroute$lat, weight = 1,
+               color = "red")
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 10: Reroute tracks that went overland back via the sea using pathroutr package"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## SEE: https://rdrr.io/github/jmlondon/pathroutr/f/vignettes/reroute_demo.Rmd
+
+## Consider the tutorial for pathroutr
+
+## NOTE: This is very computationally expensive when you have many data points
+## and high resolution coastline data. Therefore, it may be worth subsetting 
+## parts of the track that go over land and trying to reroute these parts only.
+## Then you could merge these parts of the track back onto the remainder of the track
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 11: Simulate animal tracks"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## NOTE: This step is used more for habitat modelling / SDMs. 
+## Step not required for track2KBA
+
+st <- sim_fit(fit, what="predicted", reps=5, 
+              ## cpf: is the animal exhibiting central place foraging behaviour?
+              cpf=T)
+
+plot(st, zoom=TRUE)
+
+"NOTE: Can also reroute these simulated tracks again as above.
+Will need to consider application of this step."
+
+```
+
+## Compare different interplation methods
+
+Now that you have applied the different inteprolation methods, you can compare the outputs.
+
+Compare the outputs via visual inspection.
+
+[Consider discussions about ways to support comparisons]
+
+```{r interpolation-compare, include=TRUE}
+
+## plot original vs predicted from aniMotum vs re-routed from aniMotum vs speedfilter & linear interpolation
+map %>% 
+  ## Predicted
+  addCircleMarkers(data = floc.predicted,
+                   #label = bird_track$nlocs, 
+                   radius = 5,
+                   fillColor = "green",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between predicted points
+  addPolylines(lng = floc.predicted$lon,
+               lat = floc.predicted$lat, weight = 1,
+               color = "green") %>% 
+  ## RE-ROUTED
+  addCircleMarkers(data = floc.predicted.reroute,
+                   #label = bird_track$nlocs, 
+                   radius = 3,
+                   fillColor = "red",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between re-routed points
+  addPolylines(lng = floc.predicted.reroute$lon,
+               lat = floc.predicted.reroute$lat, weight = 1,
+               color = "red") %>% 
+  ## Speed Filtered and Linear interpolated
+  addCircleMarkers(data = trip_interp,
+                   #label = bird_track$nlocs, 
+                   radius = 3,
+                   fillColor = "cyan",
+                   fillOpacity = 0.5, stroke = F) %>% 
+  ## plot lines between Speed Filtered and Linear interpolated points
+  addPolylines(lng = trip_interp$Longitude,
+               lat = trip_interp$Latitude, weight = 1,
+               color = "cyan")
+
+
+
+```
+
+## Review comparison
+
+You can see from plot above that the "advanced" interpolation method of CRAWL via `aniMotum` creates some additional loops on the tracking data. I.e it appears that the animal sort of shoots past some points and then returns back.
+
+<br>
+
+Either this tutorial is applying the aniMotum protocol incorrectly to the data, OR:
+
+<br>
+
+It's likely that the algorithm underpinning something like CRAWL is more suited to animal tracking data for diving marine predators that move much more slowly.
+
+> Future examples should consider comparisons with tracking data for diving marine predators.
+
+## Interpolation: all data
+
+[Will also need to find appropriate way to bind metadata back to individual trips]
+
+Now that you have compared interpolation methods, you will want to apply the interpolation to all trips from the tracked animals.
+
+### Linear interpolation: all animals
+
+```{r interpolation-linear-all, include = TRUE}
+
+## total number of trips
+length(unique(tracks$tripID))
+
+## create data frame and remove trips with <5 locations; as required for track2KBA analysis
+trips_to_keep <- data.frame(tracks) %>% 
+  group_by(tripID) %>% 
+  summarise(triplocs = n()) %>% 
+  dplyr::filter(triplocs > 5)
+  
+##
+tracks_df <- data.frame(tracks) %>% 
+  dplyr::filter(tripID %in% trips_to_keep$tripID)
+
+##
+length(unique(tracks_df$tripID))
+
+## start blank df
+tracks_interp_df <- data.frame()
+
+for(i in 1:length(unique(tracks_df$tripID))){
+  temp <- tracks_df %>% dplyr::filter(tripID == unique(tracks_df$tripID)[i])
+  
+  ## remove any erroneous locations due to speed use the McConnel Speed Filter 
+  ##from the trip package
+  trip_obj <- temp %>% 
+    #group_by(tripID) %>% 
+    dplyr::select(x = X, 
+                  y = Y, 
+                  DateTime, 
+                  everything()) %>% 
+    trip()
+  
+  ## McConnel Speedilter -----
+  ## apply speedfilter and creat data frame
+  trip_obj$Filter <- speedfilter(trip_obj, max.speed = 100)  # speed in km/h
+  trip_obj <- data.frame(trip_obj)
+  head(trip_obj,2)
+  
+  ## How many locations were removed with speed filter?
+  nrow(subset(trip_obj, trip_obj$Filter == F))
+  
+  ## Keep only filtered coordinates - after checking dimensions of other outputs again
+  trip_obj <- subset(trip_obj,trip_obj$Filter==TRUE)
+  
+  ## Linear interpolation -----
+  ## Apply linear interpolation step to speed filtered only data
+  
+  ## create ltraj object
+  trip_lt <- as.ltraj(xy = bind_cols(x = trip_obj$x, 
+                                     y = trip_obj$y),
+                      date = trip_obj$DateTime,
+                      id = trip_obj$tripID)
+  
+  ## Linearly interpolate/re-sample tracks every 30 minutes (specified in seconds)
+  trip_interp <- redisltraj(trip_lt, 1800, type="time")
+  head(trip_interp)
+  
+  ## convert back into format for track2KBA - dataframe for now
+  trip_interp <- ld(trip_interp) %>% 
+    dplyr::mutate(Longitude = x,
+                  Latitude = y)
+  
+  ## bind back onto dataframe
+  tracks_interp_df <- rbind(tracks_interp_df, trip_interp)
+  
+  ## remove temporary items before next loop iteration
+  rm(temp,trip_lt,trip_obj)
+  
+  ##
+  print(i)
+
+}
+
+## review it worked by checking total number of unique trips and comparing to original
+length(unique(tracks_df$tripID))
+length(unique(tracks_interp_df$id))
+
+
+
+```
+
+
+
+### Advanced interpolation: all animals
+
+```{r interpolation-advanced-all, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## aniMotum filter: All trips ----
+## Bulk filter individual trips from all birds ----
+"May need to consider a way of bulk checking quality of data."
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 1: Format the data"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+all_track_am <- data.frame(tracks) %>% mutate(lc = "G") %>% 
+  dplyr::select(id = "tripID",
+                date = "dttm",
+                lc,
+                lon = "Longitude",
+                lat = "Latitude")
+
+## remove trips with <5 locations; as required for track2KBA analysis
+trips_to_keep <- all_track_am %>% 
+  group_by(id) %>% 
+  summarise(triplocs = n()) %>% 
+  dplyr::filter(triplocs > 5)
+
+## filter out the tracks
+all_track_am <- all_track_am %>% dplyr::filter(id %in% trips_to_keep$id)
+
+
+##
+head(all_track_am,2)
+length(unique(all_track_am$id))
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 2: Fit the model"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## fit the model to all data
+fit_alltrack <- fit_ssm(all_track_am,
+                        ## specify what kind of model you want to fit. See details about different model types in paper.
+                        model = "crw",
+                        ## specify the speed at which data points could be considered outlier points (in m/s)
+                        vmax = 27,
+                        ## time.step in hours - specify time.step of new values to be predicted (interpolation)
+                        time.step = 0.5)
+
+"NOTE: Depending on how you prefilter your data before running fit_ssm, you may
+want to consider changing some of the function parameters. E.g. you might indicate
+fit.to.subset = F, if you have filtered your data already and are sure all your 
+locations are true locations."
+
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 3: Review the model fit"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## review the model summary
+## See: https://ianjonsen.github.io/aniMotum/articles/Overview.html
+"Check that converged and phHess were True. NOTE: I'm not sure what it means if they are false"
+fit_alltrack
+fit_alltrack %>% dplyr::filter(converged == F)
+fit_alltrack %>% dplyr::filter(pdHess == F)
+"Review overall summaries and SSM details for each individual. Again, not entirely sure what all the important bits are"
+summary(fit_alltrack)
+
+"~~~~~~~~~~~~~~~~~~~~~~~"
+"STEP 9: Reroute tracks that went overland back via the sea"
+"~~~~~~~~~~~~~~~~~~~~~~~"
+
+## NOTE: This will reroute the point locations only! So if you have a very detailed
+## coastline, then it may appear the animals still move over land when plotting lines 
+## between points. The success of the analysis is also dependent on the underlying
+## basemap used. The natural earth map (used by default) is good, but not very finely
+## detailed. i.e. resolution could be higher
+
+## reroute the track using the predicted values of the previously fitted model
+fit.reroute.all <- route_path(fit_alltrack,
+                          what = "predicted",
+                          map_scale = 10,
+                          dist = 10000,
+                          append = T)
+
+## data.frame of rerouted values 
+## NOTE: Some of these locations may not be ecologically realistic anymore
+## i.e. if you were to recalculate travel speeds, they may be unrealistic
+## must consider trade-off of approach accordingly
+floc.predicted.reroute <- grab(fit.reroute, what = "rerouted")
+
+## review data
+head(data.frame(floc.predicted),2)
+head(data.frame(floc.predicted.reroute),2)
+
+```
+
+
+
+

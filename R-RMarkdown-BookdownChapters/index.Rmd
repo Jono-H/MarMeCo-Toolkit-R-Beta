@@ -18,7 +18,7 @@ you can remove numbering from headers by adding {-} at the end of a header-->
 
 
 <!-- ![Gentoo Penguin, Cow Bay, Falkland Islands, Jono Handley](photos-for-book/Gentoo_CowBay_March13.JPG) -->
-![](photos-for-book/Gentoo_CowBay_March13.JPG) 
+![](photos-for-book/yelk-shearwater.jpg) 
 
 
 <!-- Adding <br> will give a single line break -->
