@@ -294,6 +294,8 @@ trip_obj <- bird_track %>%
                 everything()) %>% 
   trip()
 
+head(trip_obj,2)
+
 ## McConnel Speedilter -----
 ## apply speedfilter and creat data frame
 trip_obj$Filter <- speedfilter(trip_obj, max.speed = 100)  # speed in km/h
@@ -831,6 +833,23 @@ length(unique(tracks_interp_df$id))
 
 ```
 
+#### Review interpolation for all animals
+
+```{r interpolation-all-review, include = TRUE}
+
+## Review interpolation for all animals
+head(tracks_interp_df,2)
+
+```
+
+#### Save linear interpolation for all animals for next steps
+
+```{r interpolation-all-save, include = TRUE}
+
+## save updated file for next steps
+save(tracks_interp_df, file = "data-testing/tracking-data/Tracking_YESH_raw_step4.Rdata")
+
+```
 
 
 ### Advanced interpolation: all animals
@@ -933,7 +952,6 @@ head(data.frame(floc.predicted),2)
 head(data.frame(floc.predicted.reroute),2)
 
 ```
-
 
 
 
