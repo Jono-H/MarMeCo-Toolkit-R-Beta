@@ -337,14 +337,16 @@ for (i in 1:length(Colonies)){
   
   #Or species maximum? Max_MaxDist_Sps  
   
+  ## any cell further than MaxDist, make it NA
+  Dist.LandMask[Dist.LandMask > MaxDist] = NA
+  
   ## Get colony coordinates only and make buffer to crop raster
   col_coords <- st_as_sf(data.frame(Lon = Colonies@coords[i,][1], Lat = Colonies@coords[i,][2]),
                          coords = c("Lon", "Lat"), crs=st_crs(basemap))
   max_dist_buffer <- st_buffer(col_coords, dist = MaxDist)
   plot(max_dist_buffer, add = T)
   
-  ## any cell further than MaxDist, make it NA
-  Dist.LandMask[Dist.LandMask > MaxDist] = NA
+  
 
   #crop to reduce plot size (otherwise memory error when saving on laptop with 8gb ram)
   Dist.LandMask <- terra::crop(Dist.LandMask,

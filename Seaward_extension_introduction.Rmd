@@ -1,0 +1,100 @@
+---
+author: "Bethany Clark"
+date: '2023-03-27'
+output: html_document
+---
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- {-} curly brackets hash means subsections won't get numbered -->
+
+# Seaward Extension Introduction {.unnumbered}
+
+This document was last updated on **`r Sys.Date()`** <br> <br>
+
+This chapter provides guidance and code for delineating a seaward extension boundary from a colony of breeding seabirds.
+
+SEAWARD EXTENSION DEFINITION: These are marine areas immediately surrounding seabird breeding colonies. The areas are typically used for ecologically relevant behaviours such as rafting, preening, bathing, foraging or transiting between foraging trips, depending on a species.
+
+**CAUTION:**
+Defining seaward extensions around seabird breeding colonies should consider the ecology of the species. In other words: it is generally unsuitable to try and delineate important sites using this method that are artificially large. For example, it would likely be unsuitable to use this method to derive a foraging area for albatross; tracking data would be better suited for defining a foraging area for albatross. See further examples in the Marine Toolkit.
+
+This tutorial uses the example data for Adelie Penguins. For information on the original study, see Handley *et al.* 2021 Marine Important Bird and Biodiversity Areas for Penguins in Antarctica, Targets for Conservation Action. Frontiers in Marine Science 7: 602972. <https://doi.org/10.3389/fmars.2020.602972>
+
+While this tutorial is designed to allow minimal input from the user, users should understand the consequence of choices to input parameters while using the functions provided.
+
+<!--- Add more background and references. Thaxter, Critchey, etc. -->
+
+<br><br>
+**What does this tutorial cover:**
+
+1.  Creating a suitable background raster (grid file) for use in the seaward extension method
+
+2.  Producing a raster density grid and a polygon site boundary output for a seabird colony
+
+3.  Producing raster density grids and polygon site boundaries outputs for a multiple seabird colonies and combine them to produce a stack final output.
+
+<!--- Add links to scripts -->
+
+<!--- Add a space after the line to start the bulleted list -->
+
+<!--- Placing **text** will make text bold -->
+<br><br>
+**Inputs to this tutorial:**
+
+1.  Polygon (shapefile) of land
+
+2.  Seabird colony location(s) (latitude and longitude)
+
+3.  Radius around the colony (distance in km)
+
+4.  Colony size(s) (number of breeding pairs)
+
+[Link to input data csv template]
+
+<br><br>
+**Guidance for inputs:**
+
+1.  Polygon  of land (shapefile)
+
+    -   The resolution of this file will impact the final results, so it needs to be sufficiently fine scale compared to the scale of distance used in the method.
+    -   Shapefiles can be downloaded from <https://gadm.org/data.html>
+    -   [Also r natural earth?]
+<br><br>
+2.  Seabird colony location (latitude and longitude)
+
+    -   The accuracy of the location will impact the results, so it is recommended to check the location before running the method.
+    -   For island colonies, if the colony covers the entire island, the centre of the island is suitable. If not, it is better to use a location on the correct side of the island.
+<br><br>
+3.  Radius around the colony (distance in km)
+
+    -   [Possible distances: maxium, mean maximum, mean]
+    -   [Could be from tracking (e.g. if sample size is too small to use track2KBA)]
+    -   [Could be informed by at sea surveys?]
+<br><br>
+4.  Colony size (number of breeding pairs)
+
+    -   Could also use Apparently Occupied Sites/Nests
+    -   If the count is a range, could use mean. [Could also run for upper and lower estimate to include uncertainty]
+
+
+<!--- Complete the guidance -->
+<br><br>
+**Output(s) from this tutorial, can be used to:**
+
+-   assess data against relevant criteria, such as:
+
+    -   IBA criteria: <http://datazone.birdlife.org/site/ibacriteria>
+
+    -   KBA criteria: <https://www.keybiodiversityareas.org/working-with-kbas/proposing-updating/criteria>\
+
+-   or, for identification of sites from animal tracking data to be used in alternate spatial planning exercises.
+<br><br>
+<br><br>
+
+**References**
+
+Original workflow adapted from Critchley *et al.* 2018: https://doi.org/10.1016/j.biocon.2018.06.007
+with adaptations for Handley *et al.* 2021: https://doi.org/10.3389/fmars.2020.602972 
+
+

@@ -163,6 +163,8 @@ library(terra)
 ## Colony data: location, abundance estimate
 df <- read.csv("data-input-files-bookdown/AdeliePenguin_example_dataset.csv")
 head(df)
+236
+single <- df[236,];single
 
 ## Land polygon
 basemap <- read_sf("data-input-files-bookdown/Coastline_high_res_polygon_v7.1")
