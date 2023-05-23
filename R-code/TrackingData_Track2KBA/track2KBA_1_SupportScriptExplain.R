@@ -936,7 +936,7 @@ warning("BUT: Inside the red polygon, it is technically feasible that the maximu
 
 ## To assess each polygon we first need to summarise the data further.
 ## First, we must determine how many and where each unique polygon is.
-Site.polygons <- Site %>% 
+Site.polygons <- site %>% 
   ## filter to only include potentialSite's
   dplyr::filter(potentialSite==TRUE) %>%
   ## union to create multipart polygon

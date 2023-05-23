@@ -30,7 +30,7 @@ This document was last updated on **`r Sys.Date()`** <br>
 
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
 
-```{r setup, include=FALSE}
+```{r track2kba-yelk-load-setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 

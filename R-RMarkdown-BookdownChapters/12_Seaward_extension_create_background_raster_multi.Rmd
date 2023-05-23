@@ -30,7 +30,7 @@ This document was last updated on **`r Sys.Date()`**
 
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
 
-```{r swe1-setup, include=FALSE}
+```{r swe3-setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## we also specify in the options here to set the overall working directory
 ## back to the root directory of the R Project we are working in. We do this
@@ -47,7 +47,7 @@ wd <- getwd()
 
 If the packages fail to load, you will need to install them.
 
-```{r swe1-load-packages, include = TRUE}
+```{r swe3-load-packages, include = TRUE}
 ## Load libraries ####
 
 #install.packages("sf")
@@ -66,10 +66,10 @@ The shapefile is not provide in the github repository as the file size was too l
 Alternatively, the output is provided, so this can be used directly in the next section.
 
 
-```{r swe1-input}
-## Colony location
-latitude <- -60.683
-longitude <- -45.644
+```{r swe3-input}
+## Colony data: location, abundance estimate
+df <- read.csv(paste0(wd,"/data-input-files-bookdown/AdeliePenguin_example_dataset.csv"))
+head(df)
 
 ## Land polygon
 basemap <- read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
@@ -84,10 +84,7 @@ grid_res <- 5000
 
 **Format colony locations as spatial objects**
 
-```{r swe1-crs}
-#format colony location as dataframe
-df <- data.frame(cbind(latitude,longitude))
-
+```{r swe3-crs}
 #Set coordinate reference system (CRS) for colony locations 
 col_locs <- st_as_sf(df,coords = c("longitude","latitude"),
          crs = 4326) 
@@ -99,12 +96,14 @@ if(st_crs(col_locs) != st_crs(basemap)){
   col_locs_proj <- col_locs
 }
 
+#Plot to check
+plot(st_geometry(col_locs_proj), pch = 19, col = "blue")
 
 ```
 
 **Create raster**
 
-```{r swe1-raster}
+```{r swe3-raster}
 #First set a buffer (m) around the colony/colonies + the resolution of the grid to make sure the grid is large enough. 
 raster_buffer <- max_colony_radius + grid_res
 
@@ -128,7 +127,7 @@ Convert the basemap, currently in polygon format, to a raster and then overlay w
 
 NOTE: Operation will take time depending on size of polygon data and detail of borders. i.e. Higher resolution maps take longer to process.
 
-```{r swe1-land-mask}
+```{r swe3-land-mask}
 
 basemap_vector <- vect(basemap)
 mask <- terra::rasterize(basemap_vector, ras)
@@ -141,7 +140,7 @@ plot(ras)
 
 ## Save the raster for use in the next section
 
-```{r swe1-save}
-terra::writeRaster(ras,paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster-single.tif"), overwrite=T)
+```{r swe3-save}
+terra::writeRaster(ras,paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster.tif"), overwrite=T)
 ```
 
