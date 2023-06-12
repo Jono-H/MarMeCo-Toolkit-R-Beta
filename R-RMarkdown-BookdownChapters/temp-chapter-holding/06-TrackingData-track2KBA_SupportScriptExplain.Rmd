@@ -1,0 +1,223 @@
+# Track2KBA Guidance - Yelkoun Shearwater example
+## Boobies data
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- If you don't understand what a RMarkdown document is. Stop here. Go learn. -->
+
+<!--- Equally. You must understand the difference between Markdown vs. RMarkdown -->
+
+<!--- Remember, outside of the R code chunks we are now coding in HTML syntax, not R syntax -->
+
+**This chapter is a continuation from the previous chapter viewing and
+cleaning tracking data relating to individual trips from tracked animals
+exhibiting central place foraging behaviour. 
+
+<br>
+
+In the previous chapters, data cleaning was performed and all data was linearly interpolated.
+
+<br>
+
+Location data from near the colony was also removed so that they don't skew 
+the at-sea distribution towards to colony potentially.
+
+<br> <br>
+
+This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
+
+This document was last updated on **`r Sys.Date()`** <br>
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r track2kba-yelk-load-setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Load packages
+
+**Load required R packages:**
+
+If the packages fail to load, you will need to install the relevant packages.
+
+```{r load-packages, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Load libraries --------------------------------------------------------------
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+library(track2KBA)
+library(tidyverse)
+library(readxl)
+library(sf)
+library(xlsx)
+library(sp)
+library(gridExtra)
+library(viridis)
+
+
+```
+
+**Before you use track2KBA to identify a final site for assessmenent** you must consider the following:
+
+-   **The dataGroup**: Does your data sufficiently represent a unique dataGroup? See guidance.
+
+-   **Cleaned data**: Has your tracking data been cleaned sufficiently? I.e. have you removed likely incorrect locations from your tracking data?
+
+-   **Regularised data**: Does your tracking data represent locations evenly sampled in time?
+
+-   To regularise your tracking data so locations are evenly sampled in time, you may need to interpolate your tracking data. The typical options we consider are interpolation via linear interpolation, or the more advanced method of interpolation via "CRAWL".
+
+<br>
+
+**Load example data available with the manuscript**
+
+-   Example data from Yelkouan Shearwaters in Croatia during the breeding period. Birds during this time are typically exhibiting central place foraging behaviour.
+
+**Consider**: How should your data be formatted?
+
+You should have a dataframe which has at least five columns relating to:
+
+-   "ID" of the animal(s) you tracked
+
+-   [further details tbc]
+
+## Load example data 
+
+This data relates to the data prepared in previous chapters
+
+```{r track2kba-yelk-load-data, include=TRUE}
+
+## Load the example data for Yelkouan Shearwaters
+load("data-testing/tracking-data/Tracking_YESH_raw_step4.Rdata")
+
+## view the first two rows of data
+## First view the data in tibble format
+head(tracks_interp_df,2)
+
+## Then view the data in data frame format
+head(data.frame(tracks_interp_df),2)
+
+```
+
+## Retrieve metadata from original data
+
+Because we lost the metadata during the cleaning and inteprolation steps, we need to get this back for supporting initial considerations of defining the dataGroup.
+
+```{r track2KBA-yelk-meta, include=TRUE}
+
+## load the previous data that was only split into trips and has the relative metadata
+load("data-testing/tracking-data/Tracking_YESH_raw_step3.Rdata")
+
+## simplify this to get a table with one row of metadata for each unique individual
+head(data.frame(tracks),2)
+
+length(unique(tracks$tripID))
+
+##
+tracks_meta <- data.frame(tracks) %>% 
+  dplyr::select(scientific_name,
+                common_name,
+                site_name,
+                colony_name,
+                bird_id = ID,
+                age,
+                sex,
+                breed_stage,
+                breed_status,
+                tripID) %>% 
+  group_by(tripID) %>% 
+  slice(1)
+
+## review
+head(tracks_meta)
+
+## remove uneeded object
+rm(tracks)
+
+```
+
+## Bind metadata back onto interpolated data
+
+```{r track2KBA-yelk-metadata-bind, include = TRUE}
+
+## review
+head(tracks_interp_df,2)
+head(tracks_meta,2)
+
+## simplify interpolated data - keep key columns only
+tracks_interp <- tracks_interp_df %>% 
+  dplyr::select(dateTime = date,
+                Longitude,
+                Latitude,
+                tripID = id)
+
+## review
+head(tracks_interp,2)
+
+## bind data
+df <- left_join(tracks_interp, tracks_meta, by = "tripID")
+
+## review
+head(df,2)
+tail(df,2)
+
+```
+
+## Review summary of when data was collected
+
+```{r track2kba-yelk-summary-table, include =TRUE}
+
+## Summarise the data by species, site_name, colony_name, year, 
+## breed_status, breed_stage, age, sex.
+## First we add a new year column by splitting the date column so we can get information about years
+df_overview <- df %>% mutate(year = year(dateTime)) %>% 
+  ## then we group the data by relevant columns
+  group_by(scientific_name, 
+           site_name, 
+           colony_name, 
+           year,
+           breed_status, 
+           breed_stage,
+           age, 
+           sex) %>% 
+  ## then we continue to summarise by the distinct number of entries per group
+  summarise(n_birds = n_distinct(bird_id),
+            n_trips = n_distinct(tripID))
+
+## review the summary output
+df_overview
+
+```
+
+
+## Extract data for unique dataGroup
+
+[advice on dataGroups needed]
+
+[for yelk data we actually analysed across all colonies and treated them as one - explain further]
+
+```{r track2KBA-yelk-dataGroup, include=TRUE}
+
+df_analysis <- df %>% mutate(year = year(dateTime)) %>% 
+  dplyr::filter(colony_name == "Z" &
+                  breed_stage == "chick-rearing" &
+                  year == "2019")
+
+## check you did this correctly
+unique(df_analysis$colony_name)  
+unique(df_analysis$year)  
+
+##
+head(df_analysis,2)
+
+
+```
+
+
+
+
+> CORRECT FROM HERE: NEED TO GET BACK THE COLDIST INFORMATION FROM PREVIOUSLY TO EFFECTIVELY BE ABLE TO JUMP IN AT THE tripSummary step!!
+
+> PROBLEM: Actually, by applying tripSPlit first and then doing linear interpolation, we lose some of the necessary information (e.g. COlDist) that we got from the tripSplit function and need for later steps like tripSummary. May need to reconsider how we do this preprocessing in the best way for track2KBA.
+

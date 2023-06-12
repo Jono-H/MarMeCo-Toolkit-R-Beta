@@ -1,0 +1,512 @@
+# Track2KBA Guidance - GitHub Example
+## Boobies data
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- If you don't understand what a RMarkdown document is. Stop here. Go learn. -->
+
+<!--- Equally. You must understand the difference between Markdown vs. RMarkdown -->
+
+<!--- Remember, outside of the R code chunks we are now coding in HTML syntax, not R syntax -->
+
+This tutorial uses the example data for Masked Boobies associated with the track2KBA GitHub account: <https://github.com/BirdLifeInternational/track2kba> Supported by the manuscript: Beal et al. (2021). track2KBA: An R package for identifying important sites for biodiversity from tracking data. Methods in Ecology and Evolution.
+
+The tutorial aims to further explain what the functions are doing and acts as a guide for inexperienced users. Users should consult this tutorial in conjunction with the 2021 manuscript, supplementary material and GitHub account.
+
+While track2KBA is designed to allow minimal input from the user, users should understand the consequence of choices to input parameters while using the functions provided within track2KBA.
+
+<br> <br>
+
+**What does this tutorial cover:**
+
+-   Overview of the Track2KBA R package\
+
+-   Summary of the Track2KBA scientific paper
+
+    -   <https://doi.org/10.1111/2041-210X.13713>\
+
+-   Incorporating further details from the Track2KBA paper supplementary material\
+
+-   Incorporating details from the supporting Track2KBA GitHub tutorial
+
+    -   <https://github.com/BirdLifeInternational/track2kba>
+
+<!--- Add a space after the line to start the bulleted list -->
+
+<!--- Placing **text** will make text bold -->
+
+**Output(s) from this script, can be used to:**
+
+-   assess data against relevant criteria, such as:
+
+    -   IBA criteria: <http://datazone.birdlife.org/site/ibacriteria>
+
+    -   KBA criteria: <https://www.keybiodiversityareas.org/working-with-kbas/proposing-updating/criteria>\
+
+-   or, for identification of sites from animal tracking data to be used in alternate spatial planning exercises.
+
+This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
+
+This document was last updated on **`r Sys.Date()`** <br>
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r track2KBA-setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Load packages
+
+**Load required R packages:**
+
+If the packages fail to load, you will need to install the relevant packages.
+
+```{r track2KBA-load-packages, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Load libraries --------------------------------------------------------------
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+library(track2KBA)
+library(tidyverse)
+library(readxl)
+library(sf)
+library(xlsx)
+library(sp)
+library(gridExtra)
+library(viridis)
+
+
+```
+
+**Before you use track2KBA to identify a final site for assessmenent** you must consider the following:
+
+-   **The dataGroup**: Does your data sufficiently represent a unique dataGroup? See guidance.
+
+-   **Cleaned data**: Has your tracking data been cleaned sufficiently? I.e. have you removed likely incorrect locations from your tracking data?
+
+-   **Regularised data**: Does your tracking data represent locations evenly sampled in time?
+
+-   To regularise your tracking data so locations are evenly sampled in time, you may need to interpolate your tracking data. The typical options we consider are interpolation via linear interpolation, or the more advanced method of interpolation via "CRAWL".
+
+<br>
+
+**Load example data available with the manuscript**
+
+-   Example data from Masked Boobies during the breeding period. Birds during this time are typically exhibiting central place foraging behaviour.
+
+**Consider**: How should your data be formatted?
+
+You should have a dataframe which has at least five columns relating to:
+
+-   "ID" of the animal(s) you tracked
+
+-   further details tbc
+
+## Download example data and format
+
+```{r track2KBA-eg-data, include = TRUE}
+
+## Load the data
+data(boobies)
+
+## view the first two rows of the data
+head(boobies,2)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## track2KBA::formatFields() ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## Format the key data fields to the standard used in track2KBA
+dataGroup <- formatFields(
+  dataGroup = boobies, 
+  fieldID   = "track_id", 
+  fieldDate = "date_gmt", 
+  fieldTime = "time_gmt",
+  fieldLon  = "longitude", 
+  fieldLat  = "latitude"
+)
+
+## review the outputs - first what the new data looks like
+head(dataGroup,2)
+
+## review the outputs - then details of each column (i.e. vector) class
+str(dataGroup)
+
+
+```
+
+## Quick plot all data
+
+Simple plot of all the data for a quick review:
+
+```{r plot-all-data, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## view all data ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## quick plot of all data for a quick overview
+dataGroup.plot <- st_as_sf(dataGroup, coords = c("Longitude", "Latitude"), crs=4326) # 4326 = geographic WGS84
+plot(st_geometry(dataGroup.plot), 
+     cex = 0.5, 
+     pch = 1)
+
+## number of datapoints
+nrow(dataGroup)
+
+```
+
+## tripSplit()
+
+Set up some of the input parameters needed for the `tripSplit()` function
+
+```{r define-colony, include=TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Define colony ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## example relates to a seabird during the breeding season, when the species
+## is known to be a central place forager, therefore, define the colony position
+colony <- dataGroup %>% 
+  summarise(
+    Longitude = first(Longitude), 
+    Latitude  = first(Latitude)
+  )
+
+
+```
+
+**The `tripSplit()` function**
+
+If your data does not relate to a central place forager (CPF), OR a time when an animal may be exhibiting central place foraging behaviours, then skip this section and those relating to CPF data
+
+This step is often very useful to help automate the removal of location points on land, or near the vicinty of a colony. We don't want these extra points to bias our interpretation of the data.
+
+```{r tripSplit, include=TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## tripSplit() ----
+
+## Input is a 'data.frame' of tracking data and the central-place location. 
+## Output is a 'SpatialPointsDataFrame'.
+trips <- tripSplit(
+  dataGroup  = dataGroup,
+  colony     = colony,
+  innerBuff  = 3,      # km - defines distance an animal must travel to count as trip started
+  returnBuff = 10,     # km - defines distance an animal must be from the colony to have returned and thus completed a trip
+  duration   = 1,      # hours - defines time an animal must have travelled away from the colony to count as a trip. helps remove glitches in data or very short trips that were likely not foraging trips.
+  rmNonTrip  = TRUE    # If true - points not associated with a trip will be removed
+)
+
+## Review data after tripSplit()
+head(trips,2)
+
+## Assess number of points associated with a trip
+## Yes: indicates a point is associated with a trip
+## No: not associated with a trip
+## If you specified rmNonTrip = FALSE above, then you will also get points (data) relating to the locations that would be filtered out from the tripSplit function
+table(trips$Returns)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## mapTrips() ----
+## view data after splitting into trips ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## plot quick overview of trips recorded for individual birds
+mapTrips(trips = trips, colony = colony)
+
+```
+
+## tripSummary()
+
+**Summarise the tracking data using the `tripSummary()` function:**
+
+```{r tripSummary, include=TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Filter and summary of number of trips after splitting tracks ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## Before summarizing the trip movements, using tripSummary(). 
+## First, we can filter out data from trips that did not return to the vicinity 
+## of the colony (i.e. within returnBuff), so they don't skew the estimates.
+## Let's also check how many trips we record as Yes vs. No before filtering
+
+## Instead of looking at points associated with an invidual trip, looked at how
+## many uniqu trips you have across all individuals. i.e. the total number of trips
+## represented by each time an animal departed and returned to the colony
+
+## summarise the data
+totalTripsAll <- data.frame(trips) %>% group_by(tripID, Returns) %>% 
+  summarise(count = n()) %>% 
+  data.frame(.)
+
+## inspect the total number of unique trips
+table(totalTripsAll$Returns)
+
+## Filter to only include trips that return
+trips <- subset(trips, trips$Returns == "Yes" )
+
+## review that you have only chosen trips that return
+totalTripsYes <- data.frame(trips) %>% group_by(tripID, Returns) %>% 
+  summarise(count = n()) %>% 
+  data.frame(.)
+
+## inspect total number of unique trips
+table(totalTripsYes$Returns)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## tripSummary() ----
+## Rough summary of tracking data for complete trips ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sumTrips <- tripSummary(trips = trips, colony = colony)
+
+## Check you only have complete trips here (if that is what you are aiming for)
+table(sumTrips$complete)
+
+## filter for only complete trips if needed
+#sumTrips  <- sumTrips  %>% dplyr::filter(complete= "complete trip")
+
+## view output
+head(sumTrips ,10)
+## view unique individual ID
+unique(sumTrips$ID)
+## number of individuals with tracking data
+length(unique(sumTrips$ID))
+## number of unique trips from all individuals
+length(unique(sumTrips$tripID))
+
+```
+
+## projectTracks()
+
+track2KBA uses Kernel Density Estimation (KDE) to produce space use estimates for each individual track. In order for these to be accurate, we need to transform the tracking data to an equal-area projection.
+
+```{r projecTracks, include=TRUE}
+
+## review your input data
+head(data.frame(trips),2)
+
+## run the function
+tracks <- projectTracks(dataGroup = trips, projType = 'azim', custom=TRUE )
+class(tracks)
+str(tracks)
+
+## compare input vs. output
+head(data.frame(trips),2)
+head(data.frame(tracks),2)
+
+## compare projections
+proj4string(trips)
+proj4string(tracks)
+
+```
+
+> **NOTE:** Above you have changed your main object name from **trips** to **tracks**
+
+<br>
+
+##findScale()
+
+`findScale()` provides options for setting the all-important smoothing parameter in the KDE.
+
+`findScale()` calculates candidate smoothing parameter values using different methods.
+
+Choosing the 'optimal' smoothing parameter is critical. See GitHub page. Consider what further advice we can give to users regarding choice of smoothing parameter?
+
+```{r findScale, include=TRUE}
+
+hVals <- findScale(
+  tracks   = tracks,
+  scaleARS = TRUE,
+  sumTrips = sumTrips)
+
+## Review output
+hVals
+
+## must choose between one of three smoothing parameters for further analyses
+## smoothing parameter is distance in km. Read more in supporting documents.
+
+## Review each outputted smoothing parameter option
+hVals$mag # affected by range of animal movement. Only works for central place foragers.
+hVals$href # sort of represents quality of data
+hVals$scaleARS # affected by quality of data and subsequent ability to determine scale at which animal interacts with environment. Learn more about First Passage Time analysis
+
+```
+
+## estSpaceUse()
+
+```{r estSpaceUse, include=TRUE}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## estSpaceUse() ----
+## Produce KDEs for each individual
+## Note: here we might want to remove the trip start and end points that fall 
+## within the innerBuff distance we set in tripSplit, so that they don't skew 
+## the at-sea distribution towards to colony.
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## review input again
+head(data.frame(tracks),2)
+
+#min(tracks$ColDist)
+
+
+warning("Must update GitHub tutorial which specifies distance incorrectly")
+## remove trip start and end points near colony - distance is in m (unlike innerBuff where distance was in km)
+proj4string(tracks)
+tracks <- tracks[tracks$ColDist > 3*1000, ] 
+
+## produce the KDEs for each individual
+## NOTE: The grid cell size (i.e., grid resolution) should be less than the 
+## selected h value, otherwise the entire space use area of the animal may be 
+## encompassed in few cells
+
+KDE <- estSpaceUse(
+  tracks = tracks, 
+  scale = hVals$mag, 
+  levelUD = 50, 
+  polyOut = TRUE
+)
+
+
+## use the simple mapping function to get an overview of UDs for individuals
+mapKDE(KDE = KDE$UDPolygons, colony = colony)
+
+```
+
+## Review smoothing
+
+After applying estSpaceUse and viewing plot with mapKDE, at this step we should 
+verify that the smoothing parameter value we selected is producing reasonable 
+space use estimates, given what we know about our study animals. Are the core 
+areas much larger than expected? Much smaller? If so, consider using a different 
+value for the `scale` parameter.
+
+```{r review-smoothing, include=TRUE}
+
+## convert to sf object 
+trips_sf_IndBird <- st_as_sf(trips) %>% 
+  dplyr::filter(ID == unique(trips$ID)[1])
+
+## get the UD for a single individual 
+ud_sf_IndBird <- KDE$UDPolygons %>% 
+  dplyr::filter(id == trips_sf_IndBird$ID[1]) %>% 
+  st_transform(.,crs = st_crs(trips_sf_IndBird))
+
+## Plot OVERALL data again for first single individual
+plot(st_geometry(trips_sf_IndBird), 
+     cex = 0.5, 
+     pch = 1)
+
+## and add the UD to the plot
+plot(st_geometry(ud_sf_IndBird),add=T, border = "blue")
+
+## Determine number of points captured in UD
+## sf::sf_use_s2(FALSE) # run this if issues with st_intersection: https://stackoverflow.com/questions/68478179/how-to-resolve-spherical-geometry-failures-when-joining-spatial-data
+## PointsInUD <- st_intersection(trips_sf_IndBird, ud_sf_IndBird)
+
+## nrow(trips_sf_IndBird)
+## length(unique(PointsInUD$DateTime))
+## length(unique(PointsInUD$DateTime)) / nrow(trips_sf_IndBird) * 100
+
+warning("Assess whether your selected smoothing parameter has resulted in sensible
+        Utilisation Distributions.")
+
+warning("Can we use the above to consider some form of test to guide smoothing
+        parameter choice?.")
+
+```
+
+## repAssess()
+
+Estimate how representative this sample of animals is of the population.
+
+>NOTE: iterations should be set to 100 at a minimum when running the script officially.
+
+```{r repAssess, include = TRUE}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## repAssess() ----
+## estimate how representative this sample of animals is of the population.
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"NOTE: See iterations"
+repr <- repAssess(
+  tracks    = tracks, 
+  KDE       = KDE$KDE.Surface,
+  levelUD   = 50,
+  iteration = 1, ## iterations should be set to 100 at a minimum when running the script officially
+  bootTable = FALSE)
+
+
+```
+
+## findSite()
+
+```{r findSite, include = TRUE}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## findSite() ----
+## using findSite we can identify areas where animals are overlapping in space 
+## and delineate sites that meet some criteria of importance.
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# ## indicate the population size of your source populaiton. e.g. the population size
+# ## of the colony from which you tracked birds. For KBA identification, this estimate
+# ## should be in Mature Individuals. 
+# ## I.e. for seabird colonies: breeding pairs * 2 = mature individuals
+# SourcePopulationSize = 500
+# 
+# ## findSite function
+# Site_PolyTrue <- findSite(
+#   KDE = KDE$KDE.Surface,
+#   represent = repr$out,
+#   levelUD = 50,
+#   popSize = SourcePopulationSize,     # 500 individual seabirds breed one the island
+#   polyOut = TRUE
+# )
+# 
+# ## review outputs
+# dim(Site_PolyTrue)
+# 
+# ## plot option
+# Sitemap_PolyTrue <- mapSite(Site_PolyTrue, colony = colony)
+# 
+# ## review output object
+# Sitemap_PolyTrue
+# 
+# ## If in findSite we instead specify polyOut=FALSE, our output will be a spatial 
+# ## grid of animal densities, with each cell representing the estimated number, or 
+# ## percentage of animals using that area. So this output is independent of the 
+# ## representativness-based importance threshold. i.e. the output indicates
+# ## only the areas used by more or less individuals that you tracked, it does not 
+# ## give you a polygon that you would necessarily assess against IBA / KBA criteria.
+# ## The output also does not use the representatives measure to estimate the OVERALL
+# ## number of individuals that are likely using certain areas when you specify the
+# ## popSize of your source population.
+# 
+# ## findSite with polyOut=FALSE
+# Site_PolyFalse <- findSite(
+#   KDE = KDE$KDE.Surface,
+#   represent = repr$out,
+#   levelUD = 50,
+#   popSize = SourcePopulationSize,     # 500 individual seabirds breed one the island
+#   polyOut = FALSE
+# )
+# 
+# ## review outputs
+# dim(Site_PolyFalse)
+# max(Site_PolyFalse@data$N_IND)
+# max(Site_PolyFalse@data$N_animals)
+# head(unique(Site_PolyFalse@data$ID_IND))
+# 
+# ## simple plot option
+# Sitemap_PolyFalse <- mapSite(Site_PolyFalse, colony = colony)
+# 
+# ## review output object
+# Sitemap_PolyFalse
+
+```
+

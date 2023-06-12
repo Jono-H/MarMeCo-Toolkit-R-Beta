@@ -1,4 +1,14 @@
-# Seaward Extensions 1: Create Background Raster
+---
+author: "Bethany Clark"
+date: '2023-03-27'
+output: html_document
+---
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- {-} curly brackets hash means subsections won't get numbered -->
+
+## Seaward Extensions 1: Create Background Raster
 
 This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
 

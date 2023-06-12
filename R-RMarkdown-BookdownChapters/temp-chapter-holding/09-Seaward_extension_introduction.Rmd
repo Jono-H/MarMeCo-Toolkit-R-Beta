@@ -1,10 +1,23 @@
-# Seaward Extension Introduction
+---
+author: "Bethany Clark"
+date: '2023-03-27'
+output: html_document
+---
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- {-} curly brackets hash means subsections won't get numbered -->
+
+# Seaward Extension Introduction {.unnumbered}
 
 This document was last updated on **`r Sys.Date()`** <br> <br>
 
 This chapter provides guidance and code for delineating a seaward extension boundary from a colony of breeding seabirds.
 
 SEAWARD EXTENSION DEFINITION: These are marine areas immediately surrounding seabird breeding colonies. The areas are typically used for ecologically relevant behaviours such as rafting, preening, bathing, foraging or transiting between foraging trips, depending on a species.
+
+**CAUTION:**
+Defining seaward extensions around seabird breeding colonies should consider the ecology of the species. In other words: it is generally unsuitable to try and delineate important sites using this method that are artificially large. For example, it would likely be unsuitable to use this method to derive a foraging area for albatross; tracking data would be better suited for defining a foraging area for albatross. See further examples in the Marine Toolkit.
 
 This tutorial uses the example data for Adelie Penguins. For information on the original study, see Handley *et al.* 2021 Marine Important Bird and Biodiversity Areas for Penguins in Antarctica, Targets for Conservation Action. Frontiers in Marine Science 7: 602972. <https://doi.org/10.3389/fmars.2020.602972>
 
@@ -78,5 +91,10 @@ While this tutorial is designed to allow minimal input from the user, users shou
 -   or, for identification of sites from animal tracking data to be used in alternate spatial planning exercises.
 <br><br>
 <br><br>
+
+**References**
+
+Original workflow adapted from Critchley *et al.* 2018: https://doi.org/10.1016/j.biocon.2018.06.007
+with adaptations for Handley *et al.* 2021: https://doi.org/10.3389/fmars.2020.602972 
 
 

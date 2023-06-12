@@ -229,6 +229,12 @@ sea.ext.tabular <- iba.tabular %>%
 ## review
 head(sea.ext.tabular,2)
 
+## List of sites:
+sea.ext.tabular %>%
+  group_by(SitRecID, IBA_International) %>% 
+  slice(1) %>% 
+  data.frame()
+
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Only keep records with buffer available ----
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -363,8 +369,8 @@ plot(st_geometry(sea.ext.analysis.data.sf), add = T, col = "red")
 ## save final data for analysis
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-save(sea.ext.analysis.data, file="data-testing-india\\India-data-4-seaward-extension.Rdata")
-save(base.map, file="data-testing-india\\India-base-map.Rdata")
+# save(sea.ext.analysis.data, file="data-testing-india\\India-data-4-seaward-extension.Rdata")
+# save(base.map, file="data-testing-india\\India-base-map.Rdata")
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Test data against IBA criteria
@@ -381,8 +387,8 @@ iba.df <- Assess_IBA_criteria(input.data = sea.ext.analysis.data,
 ## Save results to compare
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-write.csv(sea.ext.analysis.data,"data-testing-india\\India-data-4-seaward-extension.csv", row.names = F)
-write.csv(iba.df,"data-testing-india\\India-data-4-seaward-extension-IBA-assessed.csv", row.names = F)
+# write.csv(sea.ext.analysis.data,"data-testing-india\\India-data-4-seaward-extension.csv", row.names = F)
+# write.csv(iba.df,"data-testing-india\\India-data-4-seaward-extension-IBA-assessed.csv", row.names = F)
 
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Test criteria again by manipulating some data
@@ -400,3 +406,84 @@ test.iba <- Assess_IBA_criteria(input.data = test.df,
                               Best.estimate.mature.individuals = "Pop_Best_MatInds")
 
 tail(data.frame(test.iba),1)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## review the current criteria each species and site meets
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## Get IBA criteria for species records sourced from WBDB for INDIA
+df.criteria <- read.csv("data-testing-india\\India-IBA-criteria-species-records.csv")
+head(df.criteria,1)
+
+## get unique site list for all sites of relevance as per the data I loaded in
+sit.list <- sort(unique(iba.tabular$SitRecID))
+
+## subset this data from the IBA criteria data
+df.criteria <- df.criteria %>% 
+  dplyr::filter(SitRecID %in% sit.list)
+
+## understanding unique identifiers
+length(unique(df.criteria$SpcPopRecID))
+length(unique(df.criteria$SpcRecID))
+length(unique(df.criteria$SpcHisSciName))
+
+## get only the key IBA criteria information
+df.criteria <- df.criteria %>% 
+  dplyr::select(SpcPopRecID,
+                SitCriPopConfirmed )
+
+## Bind to the data being considered for this analysis
+temp <- left_join(iba.tabular, df.criteria, by = "SpcPopRecID")
+
+## display key data being reviewed in this section of code
+head(temp,2)
+temp %>% 
+  dplyr::select(SitRecID,
+                SpcPopRecID,
+                #SitInternational,
+                ComName4Analysis,
+                SciName4Analysis,
+                SpcSciName,
+                SpcCommonName,
+                Current_SpcCommonName,
+                Current_SpcSciName,
+                SpcPopYear,
+                SitCriPopConfirmed,
+                StatusForAssessment) %>% 
+  data.frame()
+
+temp2 <- Assess_IBA_criteria(input.data = temp,
+                             scientific.column = "SciName4Analysis",
+                             Best.estimate.mature.individuals = "SpcPopMax")
+
+head(data.frame(temp2),1)
+temp2 %>% 
+  dplyr::select(SitRecID,
+                SpcPopRecID,
+                #SitInternational,
+                ComName4Analysis,
+                Scientific.name,
+                SitCriPopConfirmed,
+                StatusForAssessment,
+                global.best.mat.ind) %>% 
+  data.frame()
+
+
+# head(data.frame(temp2),1)
+# temp2 %>% 
+#   group_by(Scientific.name) %>% 
+#   slice(1) %>% 
+#   dplyr::select(ComName4Analysis,
+#                 Scientific.name,
+#                 global.min.mat.ind,
+#                 global.best.mat.ind,
+#                 global.max.mat.ind) %>% 
+#   mutate(min.breed = global.min.mat.ind/2,
+#          avg.breed = global.best.mat.ind/2,
+#          max.breed = global.max.mat.ind/2) %>% 
+#   data.frame() %>% 
+#   write.csv("data-testing-india\\India-data-4-seaward-extension-glob-pops.csv", row.names = F)
+
+  
+
+
