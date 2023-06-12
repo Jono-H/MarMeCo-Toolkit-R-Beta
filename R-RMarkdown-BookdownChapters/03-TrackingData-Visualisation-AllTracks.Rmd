@@ -1,0 +1,838 @@
+# Tracking data: Load data into R and visualise
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- If you don't understand what a RMarkdown document is. Stop here. Go learn. -->
+
+<!--- Equally. You must understand the difference between Markdown vs. RMarkdown -->
+
+<!--- Remember, outside of the R code chunks we are now coding in HTML syntax, not R syntax -->
+
+This tutorial uses example data from a project led by the BirdLife International partner in Croatia: BIOM
+
+The citation for this data is: **TBC**
+
+The example data can be downloaded from: **TBC - SBTD**
+
+Analyses outlined in this chapter were performed in **`r sessionInfo()$R.version$version.string`**\
+
+This chapter was last updated on **`r Sys.Date()`** <br>
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r track-vis-setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+## we also specify in the options here to set the overall working directory
+## back to the root directory of the R Project we are working in. We do this
+## because by default , the working directory for R code chunks is the directory 
+## that contains the Rmd document. We don't want this option given our file
+## set up prefers the option of having the working directory specified as that
+## where the R Project is. By specifying double dots (or more), this is like saying
+## go back one directory or more, as required.
+knitr::opts_knit$set(root.dir = "..")
+```
+
+<br>
+
+## Description of the example dataset
+
+<!--- remember, single * is italics, ** is bold -->
+
+Species tracked: Yelkouan Shearwater (*Puffinus yelkouan*)
+
+Life-cycle stage when birds were tracked: chick-rearing
+
+Site / source population birds tracked from: Lastovo SPA, Croatia
+
+Years birds were tracked over: 2019, 2020
+
+Devices birds were tracked with: GPS
+
+Device model type: PathTrack nanoFix GPS/UHF transmitters (≤ 5.5 g)
+
+[Figure showcasing Lastovo SPA and source populations]
+
+<br>
+
+## Load packages
+
+**Load required R packages:**
+
+If the package(s) fails to load, you will need to install the relevant package(s).
+
+```{r track-vis-load-packages, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Load libraries --------------------------------------------------------------
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## sf package for spatial data analyses (i.e. vector files such as points, lines, polygons)
+library(sf)
+## Tidyverse for data manipulation
+library(tidyverse)
+## ggplot2 for plotting opionts
+library(ggplot2)
+## rnaturalearth package for geographic basemaps in R
+library(rnaturalearth)
+## leaflet package for interactive maps in R
+library(leaflet)
+## lubridate for date time
+library(lubridate)
+
+```
+
+<br>
+
+## Input parameters for chapter tutorial
+
+Here we define input parameters needed for sections of the code later in this tutorial.
+
+Depending on how your data is set up, you should not need to define any further input parameters.
+
+```{r track-vis-input-parameters, include = TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Specify projections / store needed CRS definitions as variables ----
+## SEE: https://epsg.io/
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## world - unprojected coordinates
+wgs84 <- st_crs("EPSG:4326")
+
+## Croatia -  projected coordinates
+htrs96 <- st_crs("EPSG:3765")
+
+## Source a world map from the rnaturalearth R package
+## see details of function to change the type of map you get
+worldmap <- rnaturalearth::ne_download(scale = "large",
+                                       type = "countries",
+                                       category = "cultural",
+                                       destdir = tempdir(),
+                                       load = TRUE,
+                                       returnclass = "sf")
+
+```
+
+
+
+## Storing, reading, and formatting raw tracking data
+
+<br>
+
+### Storing raw tracking data
+
+The type of device you use will dictate what format your raw tracking data is stored in.
+
+Typically, we will work with **.csv** files.
+
+Good file management is critical when working with large tracking datasets.
+
+[As a guide, the following file structure can support efficient data management]
+
+<br>
+
+### Reading raw tracking data into R / Rstudio
+
+Depending on your file structure, type of raw data, and size of your overall data, we recommend reading data into R in a way that produces a single data frame (or tibble) for all your data required for a specific analysis.
+
+[Example R code for reading in raw tracking data is provided in the Appendix]
+
+<br>
+
+### Format of data
+
+Having data standardised into a common format greatly improves reproducible research, and also the ability for data to be used in other studies.
+
+The primary format we recommend is that of BirdLife International's Seabird Tracking Database:
+-   <https://www.seabirdtracking.org/>
+
+We recognise, however, that this format may not be appropriate for all analyses. Nevertheless, we encourage users to standardise their data into a common format. This will facilitate the ease through which data can be reformatted when necessary for other analyses.
+
+[Decide on best way to show example datasets - either as screen shot images? Or as example data files? Or perhaps as both. Maybe just taking subsets of the data as required.]
+
+<br>
+
+## Load raw tracking data
+
+Below, we load the raw tracking data obtained for Yelkouan Shearwaters.
+
+To see how this data was loaded into R originally, and merged to create a single data frame, see the example code in the Appendix.
+
+[Example R code for reading in raw tracking data is provided in the Appendix]
+
+The `load` function supports loading various R file formats. Here we are loading an `.Rdata` file. The file was previously saved with the name of `yelk`. So when we load the file, an object called `yelk` will be loaded into the working environment in R.
+
+```{r track-vis-load-data, include = TRUE}
+
+## Load the example data for Yelkouan Shearwaters
+load("data-testing/tracking-data/Tracking_YESH_raw.Rdata")
+
+## view the first two rows of data
+## First view the data in tibble format
+head(yelk,2)
+## Then view the data in data frame format
+head(data.frame(yelk),2)
+
+```
+
+> **tibble vs data frame**: we don't go into the specifics of these different data formats. The key message is that each provides a different way of interacting with, or viewing, data. Both are essentially a mechanism through which to work with tabular data. (i.e. data in rows and columns)
+
+[Decide on best way to show example datasets – either screen shot images? Or as example data files? Or perhaps as both. Maybe just taking subsets of the data as required.]
+
+<br>
+
+## Format data to match that of the Seabird Tracking Database
+
+In the example dataset, you will notice that the data is not in the format of that relating to the seabird tracking database.
+
+We can reformat the data by extracting the relevant columns of information, and by adding in any information where it might be missing.
+
+
+```{r track-vis-sbtd-format, include=TRUE}
+
+## First, add relevant columns of information to align with SBTD format
+## the mutate functions allows you to add a new column of information.
+## add the new columns and rename the object to a more standardised name.
+df_sbtd <- yelk %>% dplyr::mutate(dataset_id = "tbc",
+                                  scientific_name = "Puffinus yelkouan",
+                                  common_name = "Yelkouan Shearwater",
+                                  site_name = "Lastovo SPA",
+                                  lat_colony = "tbc",
+                                  lon_colony = "tbc",
+                                  device = "GPS",
+                                  age= "adult",
+                                  sex= "unknown",
+                                  breed_stage = "chick-rearing",
+                                  breed_status = "breeding",
+                                  argos_quality = NA,
+                                  equinox = NA) 
+
+## Create the separate date and time columns to match the format of the SBTD, where
+## these columns are provided separately
+df_sbtd <- df_sbtd %>% mutate(date_gmt = date(dttm),
+                              time_gmt = format(dttm, format = "%H:%M:%S"))
+
+
+## review the changes you have made (i.e. the new columns you have added)
+head(data.frame(df_sbtd),2)
+
+## Now select all the relevant columns to align data with the format of the 
+## seabird tracking database.
+## There are 21 columns of data in the format for the SBTD.
+## Remember, when you use the select function, you can also rename columns simultaneously.
+df_sbtd <- df_sbtd %>% dplyr::select(dataset_id,
+                                     scientific_name,
+                                     common_name,
+                                     site_name,
+                                     ## below for example, we select the column 
+                                     ## called colony_code but rename it to colony_name
+                                     colony_name = colony_code,
+                                     lat_colony,
+                                     lon_colony,
+                                     device,
+                                     bird_id = bird_id,
+                                     track_id = bird_id,
+                                     original_track_id = bird_id,
+                                     age,
+                                     sex,
+                                     breed_stage,
+                                     breed_status,
+                                     date_gmt,
+                                     time_gmt,
+                                     latitude,
+                                     longitude,
+                                     argos_quality,
+                                     equinox)
+
+## review the changes again
+head(data.frame(df_sbtd),2)
+```
+
+<br>
+
+## Review of the example data so far
+
+For the following columns, you may notice a few things: 
+<br>
+
+* dataset_id is specified as *tbc*. This is because until data has been loaded into the SBTD, it will not have a unique dataset identification code that would relate to the dataset stored in the SBTD.
+
+* lat_colony, lon_colony are specified as *tbc*, because we still need to define what the colony coordinates would be for each of locations birds were tagged from.
+
+* bird_id, track_id, original_track_id, are all specified with the same code. This is because when data is formatted to align with the format of the SBTD:
+  * we have a code that relates to the bird that was tracked (bird_id)
+  * we have a SBTD unique code that relates to each trip undertaken by the bird, when multiple trips are recorded (track_id). Note though, it is often the case that users do not provide data which has been pre-split into unique trips. Therefore, it is often the case that all entries relating to track_id match that of bird_id.
+  * we have a user defined code that can relate to each trip undertaken by the bird. However, the same caveat in the case of track_id applies to this column of data too.
+
+* argos_quality and equinox are both specified as NA. This is because our data relates to GPS data which does not have an argos_quality estimate (typical of PTT devices) or a measure relating to the equinox (typical of GLS devices).
+
+<br>
+
+## Explore the tabular data
+
+Before you plot any data, it can be a good idea to broadly explore the data. 
+
+While you might know which species you tracked, and from which colonies, and from which years, it can often be worth checking over these (and other) aspects of your data.
+
+Checking the data helps refresh your view on what data you have, and also helps you pick up any errors that may have arisen when inputting data.
+
+```{r track-vis-explore-data, include=TRUE}
+
+## Reminder on what the data looks like so far
+head(data.frame(df_sbtd),2)
+
+## Review the main columns of data separately. This helps check for errors associated 
+## with data entry. E.g. perhaps you typed chick-rearing and CHICK-rearing. Because
+## of the difference in lower-case vs. upper-case text, you might accidentally consider
+## these as separate components of your dataset.
+## the table function is useful to check the unique number of entries per unique input
+table(df_sbtd$scientific_name)
+table(df_sbtd$site_name)
+table(df_sbtd$colony_name)
+table(df_sbtd$breed_status)
+table(df_sbtd$breed_stage)
+table(df_sbtd$age)
+table(df_sbtd$sex)
+
+## Summarise the data by species, site_name, colony_name, year, 
+## breed_status, breed_stage, age, sex.
+## First we add a new year column by splitting the date column so we can get information about years
+df_overview <- df_sbtd %>% mutate(year = year(date_gmt)) %>% 
+  ## then we group the data by relevant columns
+  group_by(scientific_name, 
+           site_name, 
+           colony_name, 
+           year,
+           breed_status, 
+           breed_stage,
+           age, 
+           sex) %>% 
+  ## then we continue to summarise by the distinct number of entries per group
+  summarise(n_birds = n_distinct(bird_id),
+            n_tracks = n_distinct(track_id),
+            n_original_tracks = n_distinct(original_track_id))
+
+## review the summary output
+df_overview
+
+```
+
+## Review of summary output
+
+From the summary output above we can see the following:
+
+* scientific_name: we have tracking data from one species
+* site_name: we have tracking data from one general site
+* colony_name: we have tracking data from three colonies
+* year: data comes from between 2019 and 2021
+* breed_status and breed_stage: all data relates to breeding birds in the chick-rearing life-cycle stage.
+* age and sex: data is from adult birds of unknown sex
+* n_birds, n_tracks, n_original_tracks: because n_birds = n_tracks, it indicates that:
+  * either the tracking data from each individual bird has not been separated into unique trips, or
+  * the tracking data from each individual bird is only representative of a single trip to sea
+
+<br>
+
+## Arrange data and remove duplicate entries
+
+Once you have formatted your data into a standardised format and ensured that parts of your data is inputted correctly, it is also worth ensuring your data is ordered (arranged) correctly chronologically. An artifact of manipulating spatial data is that sometimes the data can become un-ordered with respect to time, or, given the way various devices interact with satellites, you can also end up with duplicated entries according to timestamps.
+
+This can be a first problem, causing your track to represent unrealistic movement patterns of the animal.
+
+We need to ensure our data is ordered correctly and also remove any duplicate timestamps.
+
+```{r track-vis-remove-duplicates, include=TRUE}
+
+## review your OVERALL data again
+head(data.frame(df_sbtd),2)
+
+## merge the date and time columns
+df_sbtd$dttm <- with(df_sbtd, ymd(date_gmt) + hms(time_gmt))
+
+## first check how many duplicate entries you may have. If there are many, it
+## is worth exploring your data further to understand why.
+n_duplicates <- df_sbtd %>% 
+  group_by(bird_id, track_id) %>% 
+  arrange(dttm) %>% 
+  dplyr::filter(duplicated(dttm) == T)
+
+## review how many duplicate entries you may have. Print the message:
+print(paste("you have ",nrow(n_duplicates), " duplicate records in a dataset of ",
+            nrow(df_sbtd), " records.", sep =""))
+            
+## remove duplicates entries if no further exploration is deemed necessary
+df_sbtd <- df_sbtd %>% 
+  ## first group data by individual animals and unique track_ids
+  group_by(bird_id, track_id) %>% 
+  ## then arrange by timestamp
+  arrange(dttm) %>% 
+  ## then if a timestamp is duplicated (TRUE), then don't select this data entry.
+  ## only select entries where timestamps are not duplicated (i.e. FALSE)
+  dplyr::filter(duplicated(dttm) == F)
+
+```
+
+<br>
+  
+## Visualise all the location data
+
+Using the `leaflet` package in R, you can easily visualise your tracking data interactively within RStudio.
+
+What should you look for when visualising the raw data?
+* Are your locations in realistic places?
+* Have you perhaps mixed up the latitude and longitude columns?
+* Does your data cross the international date line? Do you know how to deal with this?
+* Will you need to remove sections of the data that do not represent a time when the animal was tagged? (e.g. perhaps you set the device to start recording locations before deploying on the animal. So the tag might have recorded while you were travelling to the deployment location. Therefore, removing these sections of the track will facilitate your overall analysis.)
+
+```{r track-vis-visualise-data, include=TRUE}
+
+## review your OVERALL data again
+head(data.frame(df_sbtd),2)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## visualise all data ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## number of datapoints
+nrow(df_sbtd)
+
+## interactive plot
+map.alldata <- leaflet() %>% ## start leaflet plot
+  ## select background imagery
+  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>% 
+  ## plot the points. Note: leaflet automatically finds lon / lat colonies
+  addCircleMarkers(data = df_sbtd,
+                   ## size of points
+                   radius = 3,
+                   ## colour of points
+                   fillColor = "cyan",
+                   ## transparency of points
+                   fillOpacity = 0.5, 
+                   ## set stroke = F to remove borders around points
+                   stroke = F) 
+
+## generate the plot
+map.alldata
+
+```
+
+## Review of overall plot for all data points
+
+Based on the interactive plot, you can see that generally the data looks good. Generally, all the locations are in the Adriatic Sea area (something we would anticipate based on what we know about Yelkouan Shearwaters breeding in Croatia). We can conclude the following:
+
+<br>
+
+* Locations appear to be in realistic places.
+* It's unlikely that we have mixed up the latitude and longitude columns.
+* The data does not cross the international date line.
+
+<br>
+
+Regarding removing sections of the data that do not represent a time when the animal was tagged: Later filtering steps may remove these parts of the track if locations are near the vicinity of the colony (see details of the `tripSplit()` function. However, if there are broader location data associated with these types of locations, you will need to remove these sections of the track.
+
+<br>
+
+## Save all the location data as a shapefile
+
+Visualising all the location data in R can be a simpler starting point. You may also want to save this data as a shapefile (.shp) for viewing in GIS software such as QGIS or ArcGIS.
+
+> Note: saving all data as a single shapefile can be a memory intensive task (i.e. if you have a lot of data, then your computer might take a long time to save the file, or the file will be big and slow to work with)
+
+```{r track-vis-ind-create, include=TRUE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## First add a simplified unique id and create the sf spatial object ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## Review data
+head(data.frame(df_sbtd),2)
+
+## add a simplified animal ID column - a simple number for each unique animal tracked
+df_sbtd$bird_id_num <- as.numeric(factor(df_sbtd$bird_id, levels = unique(df_sbtd$bird_id)))
+
+## Review data again (tail function prints the end of the dataframe so you can
+## check if the last unique number matches the number of animals you tracked.)
+head(data.frame(df_sbtd),2)
+tail(data.frame(df_sbtd),2)
+
+## create the sf spatial object
+df_sbtd_sf <- df_sbtd %>% 
+  ## first create new columns of lon and lat again so you keep this location 
+  ## information in tabular format.
+  mutate(lon_device = longitude,
+         lat_device = latitude) %>% 
+  ## then convert object to sf spatial object
+  st_as_sf(coords = c("longitude", "latitude"), crs = wgs84)
+```
+
+
+```{r track-vis-all-shapefile, include=TRUE, eval = FALSE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Save raw tracking data as shapefile for viewing in GIS software ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## Option allows for multispecies data
+## Or the loop will only run once if you have single species data
+
+for(i in unique(df_sbtd$scientific_name)){
+  
+  ## subset the data taking the track information for each unique species
+  temp_species <- df_sbtd_sf %>% dplyr::filter(scientific_name == i)
+  
+  ## create new folder within current working directory where you will save data
+  ## first create the name of the species and the file path you need
+  ## also use gsub to replace spaces within character strings (words) with a "-"
+  species_name <- gsub(" ", "-", temp_species$scientific_name[1]) 
+  
+  ## print the name for checking
+  print(species_name)
+  
+  ## then create the new folder within current working directory
+  path_to_folder <- paste("./data-testing/tracking-data/",
+                          species_name,
+                          "/shapefiles-all-tracks",
+                          sep="")
+  
+  ## print the file path name for checking
+  print(path_to_folder)
+  
+  ## Check if folder exists, and if it does not, then make a new folder
+    if (!file.exists(path_to_folder)) {
+    # If it does not exist, create a new folder
+    dir.create(path_to_folder)
+    print(paste("Created folder:", path_to_folder))
+    } else {
+    # do nothing, but let us know the folder exists already
+    print(paste("Folder already exists:", path_to_folder))
+    }
+  
+  ## write the spatial data as a shapefile
+  ## NOTE: For some GIS software, column names will be abbreviated upon saving
+  ## NOTE: If you have very long file paths, this operation may fail. One solution
+  ## is to save the shapefile elsewhere. Another solution is to instead save the file
+  ## as a geopackage (.gpkg): simply replace the .shp text below with .gpkg
+  st_write(df_sbtd_sf, paste(path_to_folder,"/",
+                             species_name,
+                             "_AllTracks.shp", 
+                             sep = ""),
+           delete_layer = TRUE)
+  
+    ## remove the temporary file at the end of each loop
+  rm(temp_species)
+}
+
+```
+
+
+
+
+## Save all the location data as a plot
+
+[A simple plot to look at all the point location data]
+
+```{r track-vis-all-plots, include=TRUE, eval = FALSE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Save raw tracking data as simple plot ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## Option allows for multispecies data
+## Or the loop will only run once if you have single species data
+
+for(i in unique(df_sbtd$scientific_name)){
+  
+  ## subset the data taking the track information for each unique species
+  temp_species <- df_sbtd_sf %>% dplyr::filter(scientific_name == i)
+  
+  ## create new folder within current working directory where you will save data
+  ## first create the name of the species and the file path you need
+  ## also use gsub to replace spaces within character strings (words) with a "-"
+  species_name <- gsub(" ", "-", temp_species$scientific_name[1]) 
+  
+  ## print the name for checking
+  print(species_name)
+  
+  ## then create the new folder within current working directory
+  path_to_folder <- paste("./data-testing/tracking-data/",
+                          species_name,
+                          "/plots-all-tracks",
+                          sep="")
+  
+  ## print the file path name for checking
+  print(path_to_folder)
+  
+  ## Check if folder exists, and if it does not, then make a new folder
+    if (!file.exists(path_to_folder)) {
+    # If it does not exist, create a new folder
+    dir.create(path_to_folder)
+    print(paste("Created folder:", path_to_folder))
+    } else {
+    # do nothing, but let us know the folder exists already
+    print(paste("Folder already exists:", path_to_folder))
+    }
+  
+  
+  ## plot track information for each unique species
+  plot_alltracks <- ggplot() +
+  ## Use the world map data as the underlying basemap
+  geom_sf(data = worldmap, fill = "grey") +
+  ## Add the point data as transparent cyan circles
+  geom_point(data = df_sbtd_sf, aes(x = lon_device, y = lat_device), color = "cyan", alpha = 0.5) +
+  ## plot the basemap again, but this time superimpose only the country borders over the point data
+  ## this is to help you see better which points might obviously be over land.
+  geom_sf(data = worldmap, fill = NA, color = "black") +
+  ## Set the bounding box to only include the point locations
+  coord_sf(xlim = range(df_sbtd_sf$lon_device), ylim = range(df_sbtd_sf$lat_device)) +
+  ## Customize the x and y axis labels
+  labs(x = "Longitude", y = "Latitude") +
+  ## add a title to the plot
+  ggtitle(paste(species_name, "\n",
+                "points-all-animals",sep="")) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+  ## the plot
+  plot_alltracks
+  
+  ## save the plot
+  ggsave(paste(path_to_folder, "/",
+               species_name,
+               "_all-points.png", 
+               sep = ""), 
+         plot_alltracks, 
+         ## when units in mm, then 
+         width = 160, height = 160, dpi = 300, units = "mm")
+  
+  ## remove the temporary file at the end of each loop
+  rm(temp_species)
+}
+
+```
+
+
+<br>
+
+
+## Visualise individual animal tracks
+
+Once you have reviewed the overall status of the tracking data you collected, it can be worth assessing the tracks of individual animals. 
+
+This can give you a better idea of the quality of the data for each individual.
+
+> Visualising tracking data from individual animals can help you understand which data you might remove, or which data you might try and salvage.
+
+Depending on the amount of data you have, you can often initially a perform a static exploration of tracks from each individual (i.e. a simple plot of tracks from each individual), followed by an interactive exploration of tracks from all individuals, or only data from those individuals where interactive exploration is deemed necessary.
+
+Below, outlines options for visualising individual animal tracks.
+
+### Denote beginning and end of tracks for individual animals entire track
+
+```{r track-vis-beg-end-tracks, include=TRUE}
+
+## reminder on data structure
+head(data.frame(df_sbtd_sf),2)
+head(data.frame(df_sbtd),2)
+#head(data.frame(df_sbtd2),2)
+
+## add a column indicating start and end of tracks for each individual animal
+df_sbtd_sf <- df_sbtd_sf %>% 
+  group_by(bird_id_num) %>% 
+  mutate(nlocs = 1:length(bird_id_num)) %>% 
+  mutate(track_segment = if_else(nlocs <= 10, "track.start","track.journey")) %>% 
+  ## note: if you have a track with less than 20 points, then you will overwrite 
+  ## some of the previous data.
+  mutate(track_segment = if_else(nlocs %in% (length(bird_id_num)-9):(length(bird_id_num)),"track.end",track_segment)) %>%
+  ## add a column indicating colour for start and end of tracks
+  ## colours from: https://colorbrewer2.org/#type=qualitative&scheme=Set2&n=3
+  mutate(track_colour = if_else(nlocs <= 10, "#66c2a5","#8da0cb")) %>% 
+  mutate(track_colour = if_else(nlocs %in% (length(bird_id_num)-9):(length(bird_id_num)),"#fc8d62",track_colour))
+
+```
+
+
+
+### Save individual tracks as static plots
+
+[A simple plot to look at all the point location data for each individual tracked]
+
+```{r track-vis-individual-plots, include = TRUE, eval = FALSE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Save raw tracking data for each individual as a static plot ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## reminder on data structure
+head(data.frame(df_sbtd_sf),2)
+
+for(i in 1:max(df_sbtd_sf$bird_id_num)){
+  
+  ## subset the data taking the track information for each unique bird tagged
+  temp_individual <- df_sbtd_sf %>% dplyr::filter(bird_id_num == i)
+  
+  ## create new folder (if needed) within current working directory where you will save data
+  ## first create the name of the species and the file path you need
+  ## also use gsub to replace spaces within character strings (words) with a "-"
+  species_name <- gsub(" ", "-", temp_individual$scientific_name[1]) 
+  
+  ## print the name for checking
+  print(species_name)
+  
+  ## then create the new folder within current working directory
+  path_to_folder <- paste("./data-testing/tracking-data/",
+                          species_name,
+                          "/plots-individual-tracks",
+                          sep="")
+  
+  ## print the file path name for checking
+  print(path_to_folder)
+  
+  ## Check if folder exists, and if it does not, then make a new folder
+    if (!file.exists(path_to_folder)) {
+    # If it does not exist, create a new folder
+    dir.create(path_to_folder)
+    print(paste("Created folder:", path_to_folder))
+    } else {
+    # do nothing, but let us know the folder exists already
+    print(paste("Folder already exists:", path_to_folder))
+    }
+  
+  ## get animal id for naming plots
+  animal_id <- gsub(" ", "-", temp_individual$bird_id[1]) 
+  
+  
+  ## plot track information for each unique species
+  plot_individual_tracks <- ggplot() +
+  ## Use the world map data as the underlying basemap
+  geom_sf(data = worldmap, fill = "grey") +
+  ## Add the point data as transparent cyan circles
+  #geom_point(data = temp_individual, aes(x = lon_device, y = lat_device), color = "cyan", alpha = 0.5) +
+    
+  ## Add the point data - get colours from object
+  #geom_point(data = temp_individual, aes(x = lon_device, y = lat_device, color = track_colour), alpha = 0.5) +  
+  
+  
+  ## Add the journey locations
+  geom_point(data = subset(temp_individual, track_segment == "track.journey"), 
+             aes(x = lon_device, y = lat_device, color = track_colour), alpha = 0.5) +
+  ## Add the start locations
+  geom_point(data = subset(temp_individual, track_segment == "track.start"), 
+             aes(x = lon_device, y = lat_device, color = track_colour), alpha = 0.5) +
+  ## Add the end locations
+  geom_point(data = subset(temp_individual, track_segment == "track.end"), 
+             aes(x = lon_device, y = lat_device, color = track_colour), alpha = 0.5) +
+  
+  ## plot the basemap again, but this time superimpose only the country borders over the point data
+  ## this is to help you see better which points might obviously be over land.
+  geom_sf(data = worldmap, fill = NA, color = "black") +
+  ## Set the bounding box to only include the point locations
+  coord_sf(xlim = range(temp_individual$lon_device), ylim = range(temp_individual$lat_device)) +
+  ## Customize the x and y axis labels
+  labs(x = "Longitude", y = "Latitude") +
+  ## add a title to the plot
+  ggtitle(paste("points-individual:","\n",
+                animal_id, 
+                sep="")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ## remove legend
+  theme(legend.position = "none")
+  
+  ## the plot
+  plot_individual_tracks
+  
+  ## save the plot
+  ggsave(paste(path_to_folder, "/",
+               animal_id,
+               "_points.png", 
+               sep = ""), 
+         plot_individual_tracks, 
+         ## when units in mm, then 
+         width = 160, height = 160, dpi = 300, units = "mm")
+  
+  ## print a loop progress message
+  print(paste("Loop ", i, " of ", max(df_sbtd_sf$bird_id_num), sep = ""))
+    
+  ## remove the temporary file at the end of each loop
+  rm(temp_individual)
+}
+
+```
+
+
+
+### Save individual tracks as shapefiles
+
+```{r track-vis-individual-shapefile, include = TRUE, eval = FALSE}
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Save raw tracking data for each individual as shapefile for viewing in GIS software ----
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## reminder on data structure
+head(data.frame(df_sbtd_sf),2)
+
+for(i in 1:max(df_sbtd_sf$bird_id_num)){
+  
+  ## subset the data taking the track information for each unique bird tagged
+  temp_individual <- df_sbtd_sf %>% dplyr::filter(bird_id_num == i)
+  
+  ## create new folder (if needed) within current working directory where you will save data
+  ## first create the name of the species and the file path you need
+  ## also use gsub to replace spaces within character strings (words) with a "-"
+  species_name <- gsub(" ", "-", temp_individual$scientific_name[1]) 
+  
+  ## print the name for checking
+  print(species_name)
+  
+  ## then create the new folder within current working directory
+  path_to_folder <- paste("./data-testing/tracking-data/",
+                          species_name,
+                          "/shapefiles-individual-tracks",
+                          sep="")
+  
+  ## print the file path name for checking
+  print(path_to_folder)
+  
+  ## Check if folder exists, and if it does not, then make a new folder
+    if (!file.exists(path_to_folder)) {
+    # If it does not exist, create a new folder
+    dir.create(path_to_folder)
+    print(paste("Created folder:", path_to_folder))
+    } else {
+    # do nothing, but let us know the folder exists already
+    print(paste("Folder already exists:", path_to_folder))
+    }
+  
+  ## write the spatial data. Label it by species and bird_id  
+  st_write(temp_individual, 
+           paste(path_to_folder, "/tracks-individual-animals",
+                 species_name, "_",
+                 temp_individual$bird_id[1],
+                 ".shp", 
+                 sep = ""), 
+           delete_layer = T)
+  
+  ## print a loop progress message
+  print(paste("Loop ", i, " of ", max(df_sbtd_sf$bird_id_num), sep = ""))
+    
+  ## remove the temporary file at the end of each loop
+  rm(temp_individual)
+}
+
+```
+
+
+### When to remove or salvage data for a tracked individual
+
+[Examples / details to be added]
+
+> In some cases, an entire track may be worth disregarding or trying to salvage. However, it often might be the case that only certain trips from the entire period an animal was tracked may be worth removing.
+
+**NEXT STEP: Split data from individual animal into unique trips and then consider assessing each unique trip for data quality**
+
+```{r track-vis-SAVE, include = TRUE}
+
+## save updated file for next steps
+save(df_sbtd_sf, file = "data-testing/tracking-data/Tracking_YESH_raw_step2.Rdata")
+
+```
+
