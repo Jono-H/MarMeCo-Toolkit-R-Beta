@@ -1,40 +1,40 @@
----
-author: "Bethany Clark"
-date: '2023-05-05'
-output: html_document
----
-
-<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
-
-<!--- {-} curly brackets hash means subsections won't get numbered -->
-
-## Seaward Extensions: Single colony
-
-This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
-
-This document was last updated on **`r Sys.Date()`** 
-<br><br>
-
-**What does this section cover:**
-
--   Create a seaward extension raster from a colony of breeding seabirds
-
-**Input data:**
-
--   Seabird breeding colony location (latitude and longitude)
--   Abundance estimate for seabird breeding colony 
--   Global abundance estimate for seabird species
--   Estimate of appropriate distance travelled from the colony for behaviour of interest (foraging, or behaviours near to the colony such as rafting, bathing, preening, collecting nesting material). This is usually estimate from tracking data for the species collected at different site. [add guidance on how to find this information]
--   Background raster showing terrestrial and marine cells created in the previous section
--   Polygon of land
-
-<!--- Add a space after the line to start the bulleted list -->
-
-<!--- Placing **text** will make text bold -->
-
-<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
-
-```{r swe2-setup, include=FALSE}
+#' ---
+#' author: "Bethany Clark"
+#' date: '2023-05-05'
+#' output: html_document
+#' ---
+#' 
+#' <!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+#' 
+#' <!--- {-} curly brackets hash means subsections won't get numbered -->
+#' 
+#' ## Seaward Extensions: Single colony
+#' 
+#' This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
+#' 
+#' This document was last updated on **`r Sys.Date()`** 
+#' <br><br>
+#' 
+#' **What does this section cover:**
+#' 
+#' -   Create a seaward extension raster from a colony of breeding seabirds
+#' 
+#' **Input data:**
+#' 
+#' -   Seabird breeding colony location (latitude and longitude)
+#' -   Abundance estimate for seabird breeding colony 
+#' -   Global abundance estimate for seabird species
+#' -   Estimate of appropriate distance travelled from the colony for behaviour of interest (foraging, or behaviours near to the colony such as rafting, bathing, preening, collecting nesting material). This is usually estimate from tracking data for the species collected at different site. [add guidance on how to find this information]
+#' -   Background raster showing terrestrial and marine cells created in the previous section
+#' -   Polygon of land
+#' 
+#' <!--- Add a space after the line to start the bulleted list -->
+#' 
+#' <!--- Placing **text** will make text bold -->
+#' 
+#' <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+#' 
+## ----swe2-setup, include=FALSE----------------------------------------------
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## we also specify in the options here to set the overall working directory
 ## back to the root directory of the R Project we are working in. We do this
@@ -45,13 +45,13 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 knitr::opts_knit$set(root.dir = "..")
 
 wd <- getwd()
-```
 
-**Load required R packages:**
-
-If the packages fail to load, you will need to install them.
-
-```{r swe2-load-packages, include = TRUE}
+#' 
+#' **Load required R packages:**
+#' 
+#' If the packages fail to load, you will need to install them.
+#' 
+## ----swe2-load-packages, include = TRUE-------------------------------------
 ## Load libraries ####
 
 #install.packages("sf")
@@ -66,11 +66,11 @@ library(tidyverse)
 library(geosphere) #might need updating if reliant on rgdal
 
 
-```
 
-**Supply input data**
-
-```{r swe2-input}
+#' 
+#' **Supply input data**
+#' 
+## ----swe2-input-------------------------------------------------------------
 ## Colony location
 latitude <- -60.683
 longitude <- -45.644
@@ -82,17 +82,8 @@ colony_size <- 3046
 #Global population size (this is not the real value, just used for the example!)
 global_pop_size <- 200000
 
-#where can partner's get the global estimate
-# - we can get data through birdlife if not availabel on the red list
-#make sure it is mature individuals - not breeding pairs!
-#first place to look is red list
-
-
 ## Maximum colony radius distance (m)
 max_colony_radius <- 149000
-
-#add in red list 
-#if they are globally threatened, only need 20 mature indivudals
 
 ## Raster
 ras <- terra::rast(paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster-single.tif"))
@@ -101,14 +92,14 @@ ras <- terra::rast(paste0(wd,"/data-input-files-bookdown/seaward-ext-background-
 basemap <- read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
 
 
-```
 
-**Format colony locations as spatial objects**
-
-If the colony location is not projected into an equal areas crs with metres (m) as the unit, this will need to be done before calculating the distance. 
-[add guidance on choosing projections]
-
-```{r swe2-crs}
+#' 
+#' **Format colony locations as spatial objects**
+#' 
+#' If the colony location is not projected into an equal areas crs with metres (m) as the unit, this will need to be done before calculating the distance. 
+#' [add guidance on choosing projections]
+#' 
+## ----swe2-crs---------------------------------------------------------------
 #format colony location as dataframe
 df <- data.frame(cbind(latitude,longitude,colony_size))
 
@@ -124,15 +115,15 @@ if(st_crs(col_locs) != st_crs(ras)){
 }
 
 
-```
 
-
-**Calculate distance by sea from the colony per cell**
-
--   Calculate distances from the colony to each cell travelling only through marine cells, because the birds are expect to travel around land masses rather than over them to reach marine destinations.
-
-
-```{r swe2-calcdist}
+#' 
+#' 
+#' **Calculate distance by sea from the colony per cell**
+#' 
+#' -   Calculate distances from the colony to each cell travelling only through marine cells, because the birds are expect to travel around land masses rather than over them to reach marine destinations.
+#' 
+#' 
+## ----swe2-calcdist----------------------------------------------------------
 
 ## Extract the cell location of the colony
 pp <- terra::extract(ras,vect(col_locs_proj), cells=TRUE) 
@@ -154,16 +145,16 @@ if(terra::minmax(DistSea)[2] == 0) print("WARNING: Check for NAs in final output
 
 plot(DistSea) 
 
-```
 
-
-**Calculate distance by sea from the colony per cell**
-
-1. Set any cells that are further that the provided maximum distance from the colony
-2. Normalise to 0 and 1 probability of occurrence instead of distance
-3. Multiple by colony size
-
-```{r swe2-dist_to_pop}
+#' 
+#' 
+#' **Calculate distance by sea from the colony per cell**
+#' 
+#' 1. Set any cells that are further that the provided maximum distance from the colony
+#' 2. Normalise to 0 and 1 probability of occurrence instead of distance
+#' 3. Multiple by colony size
+#' 
+## ----swe2-dist_to_pop-------------------------------------------------------
 
 ## Set any cell further than maximum distance to NA
 DistSea[DistSea > max_colony_radius] <- NA
@@ -179,15 +170,15 @@ PopRaster <- DistSea*colony_size
 
 plot(PopRaster) 
 
-```
 
-
-**Save raster outputs**
-
--   Crop the raster to reduce file size and then save
-
-
-```{r swe2-save}
+#' 
+#' 
+#' **Save raster outputs**
+#' 
+#' -   Crop the raster to reduce file size and then save
+#' 
+#' 
+## ----swe2-save--------------------------------------------------------------
 
 #create folders for maps to check results
 outputs <- "/seaward_extension_outputs"
@@ -203,22 +194,21 @@ PopRaster <- terra::crop(PopRaster,
 #save
 terra::writeRaster(PopRaster,paste0(wd,outputs,"/seaward-ext-single-col-dist.tif"), overwrite=T)
 
-```
 
-
-
-**Calculate IBA raster**
-
--   Filter out cells containing less than 1% of the global population
-
-
-```{r swe2-iba-ras}
+#' 
+#' 
+#' 
+#' **Calculate IBA raster**
+#' 
+#' -   Filter out cells containing less than 1% of the global population
+#' 
+#' 
+## ----swe2-iba-ras-----------------------------------------------------------
 
 #Convert to with more (1) or less (0) than 1% of global population 
 IBA_raster <- PopRaster
 IBA_raster[IBA_raster < global_pop_size/100] <- 0
 IBA_raster[IBA_raster >= global_pop_size/100] <- 1
-
 
 #plot to check
 plot(IBA_raster) 
@@ -226,22 +216,20 @@ plot(IBA_raster)
 #set to NA cells 
 IBA_raster[IBA_raster == 0] <- NA
 
-#need to save min and max value for IBA forms
 
-```
-
-
-**Calculate IBA polygon**
-
--   Convert to polygon format
--   Simplify the polygon to a more usable shape
--   Cut out the area covered by land
--   Save the output
-
-[consider what to do with small holes by the coast]
-
-
-```{r swe2-poly}
+#' 
+#' 
+#' **Calculate IBA polygon**
+#' 
+#' -   Convert to polygon format
+#' -   Simplify the polygon to a more usable shape
+#' -   Cut out the area covered by land
+#' -   Save the output
+#' 
+#' [consider what to do with small holes by the coast]
+#' 
+#' 
+## ----swe2-poly--------------------------------------------------------------
 
 #convert raster to a polygon format
 IBA_poly_ras <- IBA_raster %>%
@@ -260,9 +248,9 @@ land <- basemap %>%
 
 #plot the result
 ggplot(IBA_poly)+
-   geom_sf(data = IBA_poly_ras, fill = "blue")+
-   geom_sf(data = land)+
-   geom_sf(fill = NA, color = "orange") 
+    geom_sf(data = IBA_poly_ras, fill = "blue")+
+    geom_sf(data = land)+
+    geom_sf(fill = NA, color = "red") 
 
 #set up fill holes function
 
@@ -312,20 +300,12 @@ ggplot(max_dist_buffer)+
     geom_sf(data = IBA_poly_trim, fill = "#fcba0350", col = "orange")+
     geom_sf(data = land, fill = "darkgrey") 
 
-
-#add metadata to the polygon before saving
-#add metadata to the plot
-
 #save the polygon
 #st_write(IBA_poly_trim,layer = "IBA_polygon")
 
 
-
-
-
-```
-
-
-
-
-
+#' 
+#' 
+#' 
+#' 
+#' 
