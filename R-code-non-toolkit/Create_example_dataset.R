@@ -24,6 +24,11 @@ names(df) <- c("colony_name","colony_size","colony_size_min","colony_size_max")
 
 head(df)
 
+summary(df$colony_size)
+#remove colonies of size 0
+
+df <- subset(df, colony_size > 0)
+
 coords <- as.data.frame(st_coordinates(adp))
 
 df$latitude <- coords$Y
@@ -31,7 +36,15 @@ df$longitude <- coords$X
 
 head(df)
 
-write.csv(df,"data-input-files-bookdown/AdeliePenguin_example_dataset.csv",
+plot(df$longitude,df$latitude)
+
+#extract some nearby colonies
+
+df2 <- subset(df, latitude > -64 & longitude < 0)
+plot(df2$longitude,df2$latitude)
+
+
+write.csv(df2,"data-input-files-bookdown/AdeliePenguin_example_dataset.csv",
           row.names = F)
 
 ## Buffer distance for species
