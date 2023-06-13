@@ -8,7 +8,7 @@ output: html_document
 
 <!--- {-} curly brackets hash means subsections won't get numbered -->
 
-# Seaward Extensions: Single colony
+## Seaward Extensions: Multiple colonies
 
 This analysis was performed in **`r sessionInfo()$R.version$version.string`**\
 
@@ -17,12 +17,12 @@ This document was last updated on **`r Sys.Date()`**
 
 **What does this section cover:**
 
--   Create a seaward extension raster and polygon for a colony of breeding seabirds
+-   Create a seaward extension raster and polygon for multiple colonies of breeding seabirds
 
 **Input data:**
-
--   Seabird breeding colony location (latitude and longitude)
--   Abundance estimate for seabird breeding colony 
+-   csv file containing:
+  -   Seabird breeding colony location (latitude and longitude)
+  -   Abundance estimate for seabird breeding colony 
 -   Global abundance estimate for seabird species
 -   Estimate of appropriate distance travelled from the colony for behaviour of interest (foraging, or behaviours near to the colony such as rafting, bathing, preening, collecting nesting material). This is usually estimate from tracking data for the species collected at different site. [add guidance on how to find this information]
 -   Background raster showing terrestrial and marine cells created in the previous section
@@ -34,9 +34,6 @@ This document was last updated on **`r Sys.Date()`**
 
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
 
-##**Load required R packages:**
-
-
 ```{r swe2-setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## we also specify in the options here to set the overall working directory
@@ -46,15 +43,13 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ## set up prefers the option of having the working directory specified as that
 ## where the R Project is.
 knitr::opts_knit$set(root.dir = "..")
-wd <- getwd()
 
+wd <- getwd()
 ```
 
-##**Load required R packages:**
+**Load required R packages:**
 
 If the packages fail to load, you will need to install them.
-If the install script fails, try downloading a new version of R here: https://cran.rstudio.com/index.html 
-If that fails try installing Rtools.
 
 ```{r swe2-load-packages, include = TRUE}
 ## Load libraries ####
@@ -68,20 +63,17 @@ library(sf)
 library(terra)
 library(tidyverse)
 #library(circular) #for circular stastics
-#library(geosphere) #might need updating if reliant on rgdal
+library(geosphere) #might need updating if reliant on rgdal
 
 
 ```
 
-##**Supply input data**
+**Supply input data**
 
 ```{r swe2-input}
-## Colony location
-latitude <- -60.683
-longitude <- -45.644
-
-#Colony size
-colony_size <- 3046
+## Colony data: location, abundance estimate
+df <- read.csv(paste0(wd,"/data-input-files-bookdown/AdeliePenguin_example_dataset.csv"))
+head(df)
 #[add guidance, bp?]
 
 #Global population size (this is not the real value, just used for the example!)
@@ -100,30 +92,27 @@ max_colony_radius <- 149000
 #if they are globally threatened, only need 20 mature indivudals
 
 ## Raster
-ras <- terra::rast(paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster-single.tif"))
+ras <- terra::rast(paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster.tif"))
 
 ## Land polygon
-basemap <- sf::read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
+basemap <- read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
 
 
 ```
 
-##**Format colony location as spatial objects**
+**Format colony locations as spatial objects**
 
-If the colony location is not projected into an equal areas crs with metres (m) as the unit, this will need to be done before calculating the distance. 
+If the colony locations are not projected into an equal areas crs with metres (m) as the unit, this will need to be done before calculating the distance. 
 [add guidance on choosing projections]
 
 ```{r swe2-crs}
-#format colony location as dataframe
-df <- data.frame(cbind(latitude,longitude,colony_size))
-
 #Set coordinate reference system (CRS) for colony locations (example for lat/lon, WGS84)
-col_locs <- sf::st_as_sf(df,coords = c("longitude","latitude"),
+col_locs <- st_as_sf(df,coords = c("longitude","latitude"),
          crs = 4326) 
 
 #If needed, convert colony data to basemap projection
-if(sf::st_crs(col_locs) != sf::st_crs(ras)){
-  col_locs_proj <- sf::st_transform(col_locs, crs = st_crs(ras))
+if(st_crs(col_locs) != st_crs(ras)){
+  col_locs_proj <- st_transform(col_locs, crs = st_crs(ras))
 } else {
   col_locs_proj <- col_locs
 }
@@ -132,62 +121,90 @@ if(sf::st_crs(col_locs) != sf::st_crs(ras)){
 ```
 
 
-##**Calculate distance by sea from the colony per cell**
+**Calculate distance by sea from the colony per cell**
 
 -   Calculate distances from the colony to each cell travelling only through marine cells, because the birds are expect to travel around land masses rather than over them to reach marine destinations.
 
 
 ```{r swe2-calcdist}
 
-## Extract the cell location of the colony
-pp <- terra::extract(ras,vect(col_locs_proj), cells=TRUE) 
+for(i in 1:nrow(df)){
+  
+  colony <- subset(col_locs_proj,colony_name == df$colony_name[i]);colony
+  
 
-## convert that cell to a value of 3 
-ras[pp$cell] <- 3
-ras[ras==2] <- NA
+  ## Extract the cell location of the colony
+  pp <- terra::extract(ras,vect(colony), cells=TRUE) 
 
-## You now have a raster with colony cell = 3, land cells = 2 and sea cells =1
+  ## convert that cell to a value of 3 
+  colony_ras <- ras
+  colony_ras[pp$cell] <- 3
 
-## Calculate distance from colony via sea, cell values of NA are avoided while determining distance
-DistSea <- terra::gridDist(x=ras,    # x specifies which raster to use
-                           target=3) # specifies which cell to determine distance from
+  ## You now have a raster with colony cell = 3, land cells = 2 and sea cells =1
 
-if(terra::minmax(DistSea)[2] == 0) print("WARNING: Check for NAs in final output. Your origin(colony) may be to far in land. 
+  ## Calculate distance from colony via sea
+  DistSea <- terra::gridDistance(x=colony_ras,    # x specifies which raster to use
+                                origin=3, # origin specifies which cell to     determine distance from
+                                omit=2)   # omit says which cell values to avoid while determining distance
+
+  if(terra::minmax(DistSea)[2] == 0) print("WARNING: Check for NAs in final output. Your origin(colony) may be to far in land. 
                                                   Therefore, your origin is completely buffered by omit cells (land cells), 
                                                   and no distance calculation for cells at sea can be performed") else print(
                                          "Distance calculation successful")
 
-plot(DistSea) 
+  plot(DistSea) 
+  
+  #Save rasters 
+  if(i == 1){
+      ColonyStack <- DistSea
+  } else {
+     ColonyStack <- c(ColonyStack,DistSea)
+  }
+
+  
+}
 
 ```
 
 
-##**Calculate estimate number of birds from the colony using each cell**
-
+**Calculate estimate number of birds from the colony using each cell**
 1. Set any cells that are further that the provided maximum distance from the colony
 2. Normalise to 0 and 1 probability of occurrence instead of distance
 3. Multiple by colony size
 
 ```{r swe2-dist_to_pop}
 
-## Set any cell further than maximum distance to NA
-DistSea[DistSea > max_colony_radius] <- NA
+#Loop through colonies
+for(i in 1:nrow(df)){
 
-## Normalise to 0 and 1 probability of occurrence (linear decay)
-DistSea <- -1*(DistSea/max_colony_radius)+1 
+  DistSea <- ColonyStack[[i]]
+  
+  ## Set any cell further than maximum distance to NA
+  DistSea[DistSea > max_colony_radius] <- NA
 
-## Could can change to exponential or other decay function instead.
-## [add options]
+  ## Normalise to 0 and 1 probability of occurrence (linear decay)
+  DistSea <- -1*(DistSea/max_colony_radius)+1 
 
-#Multiply by population size
-PopRaster <- DistSea*colony_size
+  ## Could can change to exponential or other decay function instead.
+  ## [add options]
 
-plot(PopRaster) 
+  #Multiply by population size
+  PopRaster <- DistSea*df$colony_size[i]
+
+  plot(PopRaster) 
+  
+    #Save rasters 
+  if(i == 1){
+      ColonyStack_pop <- PopRaster
+  } else {
+     ColonyStack_pop <- c(ColonyStack_pop,PopRaster)
+  }
+}
 
 ```
 
 
-##**Save raster outputs**
+**Save raster outputs**
 
 -   Crop the raster to reduce file size and then save
 
@@ -198,13 +215,6 @@ plot(PopRaster)
 outputs <- "/seaward_extension_outputs"
 dir.create(outputs)
 
-##Make buffer to crop raster
-max_dist_buffer <- st_buffer(col_locs_proj, dist = max_colony_radius)
-
-#crop to reduce size for saving
-PopRaster <- terra::crop(PopRaster,
-                       max_dist_buffer,
-                       snap = "out")
 #save
 terra::writeRaster(PopRaster,paste0(wd,outputs,"/seaward-ext-single-col-dist.tif"), overwrite=T)
 
@@ -212,7 +222,7 @@ terra::writeRaster(PopRaster,paste0(wd,outputs,"/seaward-ext-single-col-dist.tif
 
 
 
-##**Calculate IBA raster**
+**Calculate IBA raster**
 
 -   Filter out cells containing less than 1% of the global population
 
@@ -236,13 +246,14 @@ IBA_raster[IBA_raster == 0] <- NA
 ```
 
 
-##**Calculate IBA polygon**
+**Calculate IBA polygon**
 
 -   Convert to polygon format
 -   Simplify the polygon to a more usable shape
--   Fill in small holes between the land and simplified polygon
 -   Cut out the area covered by land
 -   Save the output
+
+[consider what to do with small holes by the coast]
 
 
 ```{r swe2-poly}
@@ -305,15 +316,6 @@ IBA_poly_trim <- st_union(IBA_poly, land) %>%
   st_fill_holes() %>%  
   st_difference(land)
 
-
-```
-
-
-## Plot and save the final IBA polygon
-
-
-```{r swe2-plot-save}
-
 #plot the final polygon
 ggplot(IBA_poly_trim)+
     geom_sf(data = land) +
@@ -330,11 +332,15 @@ ggplot(max_dist_buffer)+
 #add metadata to the plot
 
 #save the polygon
-st_write(IBA_poly_trim,layer = "IBA_polygon")
+#st_write(IBA_poly_trim,layer = "IBA_polygon")
+
+
 
 
 
 ```
+
+
 
 
 
