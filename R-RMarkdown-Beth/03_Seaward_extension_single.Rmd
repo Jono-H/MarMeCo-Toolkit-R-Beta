@@ -34,7 +34,7 @@ This document was last updated on **`r Sys.Date()`**
 
 <!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
 
-##**Load required R packages:**
+## **Load required R packages:**
 
 
 ```{r swe2-setup, include=FALSE}
@@ -50,7 +50,7 @@ wd <- getwd()
 
 ```
 
-##**Load required R packages:**
+## **Load required R packages:**
 
 If the packages fail to load, you will need to install them.
 If the install script fails, try downloading a new version of R here: https://cran.rstudio.com/index.html 
@@ -73,7 +73,7 @@ library(tidyverse)
 
 ```
 
-##**Supply input data**
+## **Supply input data**
 
 ```{r swe2-input}
 ## Colony location
@@ -101,6 +101,7 @@ max_colony_radius <- 149000
 
 ## Raster
 ras <- terra::rast(paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster-single.tif"))
+ras[ras==2] <- NA
 
 ## Land polygon
 basemap <- sf::read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
@@ -108,7 +109,7 @@ basemap <- sf::read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_
 
 ```
 
-##**Format colony location as spatial objects**
+## **Format colony location as spatial objects**
 
 If the colony location is not projected into an equal areas crs with metres (m) as the unit, this will need to be done before calculating the distance. 
 [add guidance on choosing projections]
@@ -132,7 +133,7 @@ if(sf::st_crs(col_locs) != sf::st_crs(ras)){
 ```
 
 
-##**Calculate distance by sea from the colony per cell**
+## **Calculate distance by sea from the colony per cell**
 
 -   Calculate distances from the colony to each cell travelling only through marine cells, because the birds are expect to travel around land masses rather than over them to reach marine destinations.
 
@@ -142,15 +143,14 @@ if(sf::st_crs(col_locs) != sf::st_crs(ras)){
 ## Extract the cell location of the colony
 pp <- terra::extract(ras,vect(col_locs_proj), cells=TRUE) 
 
-## convert that cell to a value of 3 
-ras[pp$cell] <- 3
-ras[ras==2] <- NA
+## convert that cell to a value of 2
+ras[pp$cell] <- 2
 
-## You now have a raster with colony cell = 3, land cells = 2 and sea cells =1
+## You now have a raster with colony cell = 2, land cells = NA and sea cells = 1
 
 ## Calculate distance from colony via sea, cell values of NA are avoided while determining distance
 DistSea <- terra::gridDist(x=ras,    # x specifies which raster to use
-                           target=3) # specifies which cell to determine distance from
+                           target=2) # specifies which cell to determine distance from
 
 if(terra::minmax(DistSea)[2] == 0) print("WARNING: Check for NAs in final output. Your origin(colony) may be to far in land. 
                                                   Therefore, your origin is completely buffered by omit cells (land cells), 
@@ -162,9 +162,9 @@ plot(DistSea)
 ```
 
 
-##**Calculate estimate number of birds from the colony using each cell**
+## **Calculate estimate number of birds from the colony using each cell**
 
-1. Set any cells that are further that the provided maximum distance from the colony
+1. Set any cells that are further that the provided maximum distance from the colony to NA
 2. Normalise to 0 and 1 probability of occurrence instead of distance
 3. Multiple by colony size
 
@@ -187,7 +187,7 @@ plot(PopRaster)
 ```
 
 
-##**Save raster outputs**
+## **Save raster outputs**
 
 -   Crop the raster to reduce file size and then save
 
@@ -212,7 +212,7 @@ terra::writeRaster(PopRaster,paste0(wd,outputs,"/seaward-ext-single-col-dist.tif
 
 
 
-##**Calculate IBA raster**
+## **Calculate IBA raster**
 
 -   Filter out cells containing less than 1% of the global population
 
@@ -236,7 +236,7 @@ IBA_raster[IBA_raster == 0] <- NA
 ```
 
 
-##**Calculate IBA polygon**
+## **Calculate IBA polygon**
 
 -   Convert to polygon format
 -   Simplify the polygon to a more usable shape
@@ -330,7 +330,7 @@ ggplot(max_dist_buffer)+
 #add metadata to the plot
 
 #save the polygon
-st_write(IBA_poly_trim,layer = "IBA_polygon")
+#st_write(IBA_poly_trim,layer = "IBA_polygon")
 
 
 

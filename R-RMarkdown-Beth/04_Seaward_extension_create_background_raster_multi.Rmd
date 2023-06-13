@@ -131,9 +131,10 @@ NOTE: Operation will take time depending on size of polygon data and detail of b
 
 basemap_vector <- vect(basemap)
 mask <- terra::rasterize(basemap_vector, ras)
-ras <- is.na(mask)
-ras[ras==0] <- 2
-plot(ras)
+mask[is.na(mask)] <- 2
+mask[mask == 1] <- NA
+mask[mask == 2] <- 1
+plot(mask)
 #plot(st_geometry(col_locs_proj), pch = 19, col = "blue", add = T)
 
 ```
@@ -141,6 +142,6 @@ plot(ras)
 ## Save the raster for use in the next section
 
 ```{r swe3-save}
-terra::writeRaster(ras,paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster.tif"), overwrite=T)
+terra::writeRaster(mask,paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster.tif"), overwrite = TRUE)
 ```
 

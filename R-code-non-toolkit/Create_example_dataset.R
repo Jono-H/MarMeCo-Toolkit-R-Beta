@@ -13,6 +13,8 @@ head(d,2)
 
 table(d$common_name)
 
+d <- subset(d, penguin_count_recent > 0)
+
 adp <- subset(d,common_name == "ADP")
 
 df <- adp %>%
@@ -27,7 +29,7 @@ head(df)
 summary(df$colony_size)
 #remove colonies of size 0
 
-df <- subset(df, colony_size > 0)
+
 
 coords <- as.data.frame(st_coordinates(adp))
 
@@ -40,7 +42,7 @@ plot(df$longitude,df$latitude)
 
 #extract some nearby colonies
 
-df2 <- subset(df, latitude > -64 & longitude < 0)
+df2 <- subset(df, latitude > -64 & longitude < -50)
 plot(df2$longitude,df2$latitude)
 
 

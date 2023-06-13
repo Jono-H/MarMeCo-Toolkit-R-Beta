@@ -47,9 +47,11 @@ knitr::opts_knit$set(root.dir = "..")
 wd <- getwd()
 ```
 
-**Load required R packages:**
+## **Load required R packages:**
 
 If the packages fail to load, you will need to install them.
+If the install script fails, try downloading a new version of R here: https://cran.rstudio.com/index.html 
+If that fails try installing Rtools.
 
 ```{r swe2-load-packages, include = TRUE}
 ## Load libraries ####
@@ -58,17 +60,15 @@ If the packages fail to load, you will need to install them.
 #install.packages("terra")
 #install.packages("tidyverse")
 #install.packages("circular")
-#install.packages("geosphere")
 library(sf)
 library(terra)
 library(tidyverse)
 #library(circular) #for circular stastics
-library(geosphere) #might need updating if reliant on rgdal
 
 
 ```
 
-**Supply input data**
+## **Supply input data**
 
 ```{r swe2-input}
 ## Colony data: location, abundance estimate
@@ -93,6 +93,7 @@ max_colony_radius <- 149000
 
 ## Raster
 ras <- terra::rast(paste0(wd,"/data-input-files-bookdown/seaward-ext-background-raster.tif"))
+ras[ras==2] <- NA
 
 ## Land polygon
 basemap <- read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_polygon_v7.1"))
@@ -100,7 +101,7 @@ basemap <- read_sf(paste0(wd,"/data-input-files-bookdown/Coastline_high_res_poly
 
 ```
 
-**Format colony locations as spatial objects**
+## **Format colony locations as spatial objects**
 
 If the colony locations are not projected into an equal areas crs with metres (m) as the unit, this will need to be done before calculating the distance. 
 [add guidance on choosing projections]
@@ -121,7 +122,7 @@ if(st_crs(col_locs) != st_crs(ras)){
 ```
 
 
-**Calculate distance by sea from the colony per cell**
+## **Calculate distance by sea from the colony per cell**
 
 -   Calculate distances from the colony to each cell travelling only through marine cells, because the birds are expect to travel around land masses rather than over them to reach marine destinations.
 
@@ -136,24 +137,28 @@ for(i in 1:nrow(df)){
   ## Extract the cell location of the colony
   pp <- terra::extract(ras,vect(colony), cells=TRUE) 
 
-  ## convert that cell to a value of 3 
+  ## convert that cell to a value of 2
   colony_ras <- ras
-  colony_ras[pp$cell] <- 3
+  colony_ras[pp$cell] <- 2
 
-  ## You now have a raster with colony cell = 3, land cells = 2 and sea cells =1
+  ## You now have a raster with colony cell = 2, land cells = NA and sea cells = 1
 
-  ## Calculate distance from colony via sea
-  DistSea <- terra::gridDistance(x=colony_ras,    # x specifies which raster to use
-                                origin=3, # origin specifies which cell to     determine distance from
-                                omit=2)   # omit says which cell values to avoid while determining distance
-
+  ## Calculate distance from colony via sea, cell values of NA are avoided while determining distance
+  DistSea <- terra::gridDist(x=colony_ras,  # x specifies which raster to use
+                             target=2)      # specifies which cell to determine distance from distance
+  #Add colony name to raster
+  names(DistSea) <- df$colony_name[i]
+  
+  #Plot
+  plot(DistSea, main = df$colony_name[i]) 
+  
+  #Check calculation is successful
   if(terra::minmax(DistSea)[2] == 0) print("WARNING: Check for NAs in final output. Your origin(colony) may be to far in land. 
                                                   Therefore, your origin is completely buffered by omit cells (land cells), 
-                                                  and no distance calculation for cells at sea can be performed") else print(
-                                         "Distance calculation successful")
+                                                  and no distance calculation for cells at sea can be performed") else print(paste(i,
+                                         "Distance calculation successful"))
 
-  plot(DistSea) 
-  
+
   #Save rasters 
   if(i == 1){
       ColonyStack <- DistSea
@@ -167,8 +172,8 @@ for(i in 1:nrow(df)){
 ```
 
 
-**Calculate estimate number of birds from the colony using each cell**
-1. Set any cells that are further that the provided maximum distance from the colony
+## **Calculate estimate number of birds from the colony using each cell**
+1. Set any cells that are further that the provided maximum distance from the colony to NA
 2. Normalise to 0 and 1 probability of occurrence instead of distance
 3. Multiple by colony size
 
@@ -190,10 +195,14 @@ for(i in 1:nrow(df)){
 
   #Multiply by population size
   PopRaster <- DistSea*df$colony_size[i]
-
-  plot(PopRaster) 
   
-    #Save rasters 
+  #Add colony name to raster
+  names(PopRaster) <- df$colony_name[i]
+  
+  #Plot
+  plot(PopRaster, main = df$colony_name[i]) 
+  
+  #Save rasters 
   if(i == 1){
       ColonyStack_pop <- PopRaster
   } else {
@@ -204,118 +213,153 @@ for(i in 1:nrow(df)){
 ```
 
 
-**Save raster outputs**
-
--   Crop the raster to reduce file size and then save
+## **Save raster outputs**
 
 
 ```{r swe2-save}
 
 #create folders for maps to check results
-outputs <- "/seaward_extension_outputs"
-dir.create(outputs)
+#outputs <- "/seaward_extension_outputs"
+#dir.create(outputs)
 
 #save
-terra::writeRaster(PopRaster,paste0(wd,outputs,"/seaward-ext-single-col-dist.tif"), overwrite=T)
+#terra::writeRaster(PopRaster,paste0(wd,outputs,"/seaward-ext-single-col-dist.tif"), overwrite=T)
 
 ```
 
 
 
-**Calculate IBA raster**
+## **Calculate IBA raster**
 
--   Filter out cells containing less than 1% of the global population
-
+-  If using this criteria, filter out cells containing less than 1% of the global population
+[USe if statements to use the correct calculation based on species, specify options at top of script]
+[need to save min and max value for IBA forms]
 
 ```{r swe2-iba-ras}
-
-#Convert to with more (1) or less (0) than 1% of global population 
-IBA_raster <- PopRaster
-IBA_raster[IBA_raster < global_pop_size/100] <- 0
-IBA_raster[IBA_raster >= global_pop_size/100] <- 1
-
-
-#plot to check
-plot(IBA_raster) 
-
-#set to NA cells 
-IBA_raster[IBA_raster == 0] <- NA
-
-#need to save min and max value for IBA forms
+#Loop through colonies
+for(i in 1:nrow(df)){
+  
+  PopRaster <- ColonyStack_pop[[i]]
+  
+  
+  #Convert to with more (1) or less (0) than 1% of global population 
+  IBA_raster <- PopRaster
+  IBA_raster[IBA_raster < global_pop_size/100] <- 0
+  IBA_raster[IBA_raster >= global_pop_size/100] <- 1
+  
+  #check how many cells meet criteria
+  df$ncells[i] <- sum(values(IBA_raster),na.rm = T)
+  #set to NA cells 
+  IBA_raster[IBA_raster == 0] <- NA
+  
+  #Plot and save only the rasters that meet the criteria
+  
+  
+  if(i == 1 & df$ncells[i] > 0){
+    
+    plot(IBA_raster, main = names(PopRaster)) 
+    ColonyStack_IBA <- IBA_raster
+  
+  } else if(df$ncells[i] > 0) {
+    
+    plot(IBA_raster, main = names(PopRaster)) 
+    ColonyStack_IBA <- c(ColonyStack_IBA,IBA_raster)
+  }
+}
 
 ```
 
-
-**Calculate IBA polygon**
+## **Calculate IBA polygon**
 
 -   Convert to polygon format
 -   Simplify the polygon to a more usable shape
+-   Fill in small holes between the land and simplified polygon
 -   Cut out the area covered by land
 -   Save the output
 
-[consider what to do with small holes by the coast]
-
 
 ```{r swe2-poly}
-
-#convert raster to a polygon format
-IBA_poly_ras <- IBA_raster %>%
-  terra::as.polygons() %>%
-  sf::st_as_sf()
-
-#simplify the polygon
-IBA_poly <- IBA_poly_ras %>%
-  sf::st_buffer(dist = res(IBA_raster)[1]/4) %>%
-  sf::st_simplify(dTolerance = res(IBA_raster)[1]) 
+#Loop through colonies
+for(i in 1:nlyr(ColonyStack_IBA)){
   
-#get local part of basemap  
-land <- basemap %>% 
-  st_crop(st_bbox(max_dist_buffer)) %>%
-  st_union()
-
-#plot the result
-ggplot(IBA_poly)+
-   geom_sf(data = IBA_poly_ras, fill = "blue")+
-   geom_sf(data = land)+
-   geom_sf(fill = NA, color = "orange") 
-
-#set up fill holes function
-
-st_fill_holes <- function (x, max_area = 0) {
+  IBA_raster <- ColonyStack_IBA[[i]]
+  
+  #convert raster to a polygon format
+  IBA_poly_ras <- IBA_raster %>%
+    terra::as.polygons() %>%
+    sf::st_as_sf()
+  
+  #simplify the polygon
+  IBA_poly <- IBA_poly_ras %>%
+    sf::st_buffer(dist = res(IBA_raster)[1]/4) %>%
+    sf::st_simplify(dTolerance = res(IBA_raster)[1]) 
+  
+  #get local part of basemap  
+  land <- basemap %>% 
+    st_crop(st_bbox(max_dist_buffer)) %>%
+    st_union()
+  
+  #set up fill holes function
+  st_fill_holes <- function (x, max_area = 0) {
     geom = st_geometry(x)
-        dat = st_set_geometry(x, NULL)
+    dat = st_set_geometry(x, NULL)
     for (i in 1:length(geom)) {
-        if (st_is(geom[i], "MULTIPOLYGON")) {
-            tmp = st_cast(geom[i], "POLYGON")
-            for (j in 1:length(tmp)) {
-                if (length(tmp[j][[1]]) > 1) {
-                  if (max_area > 0) {
-                    holes = lapply(tmp[j][[1]], function(x) {
-                      st_polygon(list(x))
-                    })[-1]
-                    holes = lapply(holes, function(h) st_sfc(h, 
-                      crs = st_crs(x)))
-                    areas = c(Inf, sapply(holes, st_area))
-                    tmp[j] = st_polygon(tmp[j][[1]][which(areas > 
-                      max_area)])
-                  }
-                  else {
-                    tmp[j] = st_polygon(tmp[j][[1]][1])
-                  }
-                }
+      if (st_is(geom[i], "MULTIPOLYGON")) {
+        tmp = st_cast(geom[i], "POLYGON")
+        for (j in 1:length(tmp)) {
+          if (length(tmp[j][[1]]) > 1) {
+            if (max_area > 0) {
+              holes = lapply(tmp[j][[1]], function(x) {
+                st_polygon(list(x))
+              })[-1]
+              holes = lapply(holes, function(h) st_sfc(h, 
+                                                       crs = st_crs(x)))
+              areas = c(Inf, sapply(holes, st_area))
+              tmp[j] = st_polygon(tmp[j][[1]][which(areas > 
+                                                      max_area)])
             }
-            geom[i] = st_combine(tmp)
+            else {
+              tmp[j] = st_polygon(tmp[j][[1]][1])
+            }
+          }
         }
+        geom[i] = st_combine(tmp)
+      }
     }
-        geom = st_sf(dat, geometry = geom)
+    geom = st_sf(dat, geometry = geom)
+  }
+  
+  
+  #trim out the areas covered by land
+  IBA_poly_trim <- st_union(IBA_poly, land) %>%
+    st_fill_holes() %>%  
+    st_difference(land)
+  
+  #plot the result
+  ggplot(IBA_poly_trim)+
+    geom_sf(data = IBA_poly_ras, fill = "blue")+
+    #geom_sf(data = land)+
+    geom_sf(fill = NA, color = "orange")
+  
+  #Save polys 
+  if(i == 1){
+    IBA_polygons <- IBA_poly_trim
+  } else {
+    IBA_polygons <- c(IBA_polygons,IBA_poly_trim)
+  }
 }
 
+```
 
-#trim out the areas covered by land
-IBA_poly_trim <- st_union(IBA_poly, land) %>%
-  st_fill_holes() %>%  
-  st_difference(land)
 
+## **Plot and save the final IBA polygon**
+
+
+```{r swe2-plot-save}
+#Loop through colonies
+for(i in 1:nrow(df)){
+
+  DistSea <- ColonyStack[[i]]
 #plot the final polygon
 ggplot(IBA_poly_trim)+
     geom_sf(data = land) +
@@ -325,7 +369,8 @@ ggplot(IBA_poly_trim)+
 ggplot(max_dist_buffer)+
     geom_sf(fill = NA, col = "blue")+
     geom_sf(data = IBA_poly_trim, fill = "#fcba0350", col = "orange")+
-    geom_sf(data = land, fill = "darkgrey") 
+    geom_sf(data = land, fill = "darkgrey") +
+    ggtitle()
 
 
 #add metadata to the polygon before saving
@@ -335,12 +380,15 @@ ggplot(max_dist_buffer)+
 #st_write(IBA_poly_trim,layer = "IBA_polygon")
 
 
-
-
+  #Save rasters 
+  if(i == 1){
+      ColonyStack_pop <- PopRaster
+  } else {
+     ColonyStack_pop <- c(ColonyStack_pop,PopRaster)
+  }
+}
 
 ```
-
-
 
 
 
