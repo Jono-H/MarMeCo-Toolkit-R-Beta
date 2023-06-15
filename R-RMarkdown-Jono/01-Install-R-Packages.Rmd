@@ -1,0 +1,101 @@
+# Install R Packages
+
+<!--- This is an HTML comment in RMarkdown. You can use these comments to make notes that won't get read when running the code -->
+
+<!--- If you don't understand what a RMarkdown document is. Stop here. Go learn. -->
+
+<!--- Equally. You must understand the difference between Markdown vs. RMarkdown -->
+
+<!--- Remember, outside of the R code chunks we are now coding in HTML syntax, not R syntax -->
+
+This chapter was built with **`r sessionInfo()$R.version$version.string`**\
+
+The chapter was last updated on **`r Sys.Date()`** <br>
+
+<!--- In the code chunk below, we specify include = F, so that we will run the chunk but not include the chunk in the final document. We set a global argument in the code chunk of echo = T, so that in later code chunks, the code will be displayed in the RMarkdown document -->
+
+```{r track-intro-setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+## we also specify in the options here to set the overall working directory
+## back to the root directory of the R Project we are working in. We do this
+## because by default , the working directory for R code chunks is the directory 
+## that contains the Rmd document. We don't want this option given our file
+## set up prefers the option of having the working directory specified as that
+## where the R Project is.
+knitr::opts_knit$set(root.dir = "..")
+```
+
+## Recommended R packages for use within the Marine Toolkit
+
+To use many of the functions within the Marine Toolkit, you will need to install various R packages. This page outlines all the R packages and associated versions of the **key packages used throughout the toolkit**.
+
+The page also provides support script to install all necessary R packages.
+
+> If you do not succeed in installing a necessary R package using supporting code from this page, it may be because a specific R package requires some form of custom installation. Generally, you should be able to find a solution for installing the package on the internet. If you are still having problems installing a specific R package, then we recommend you contact the person who maintains the R package. You can typically find out who the package maintainer is by searching on the internet.
+
+### Install the tidyverse: a primary R package for processing data
+
+First, check if the `tidyverse` is installed or not. If it is not installed, then install it.
+
+```{r}
+
+# Define the package name
+package_name <- "tidyverse"
+
+# Check if the package namespace exists
+if (!requireNamespace(package_name, quietly = TRUE)) {
+  # Install the package
+  install.packages(package_name)
+  
+  # Load the newly installed package
+  library(package_name, character.only = TRUE)
+} else {
+  # Package is already installed, proceed with using it
+  message(package_name, " is already installed.")
+}
+
+
+```
+
+### Review & install packages needed in the toolkit
+
+[After we build the entire toolkit, we must find a way of checking / listing all the names of the **KEY** packages we used and their associated versions. Below outlines a way of supporting people to test whether they have the right version of a package on their machine].
+
+> [Will need to populate the dataframe packages.for.toolkit properly after we build the toolkit]
+
+```{r}
+
+packages.for.toolkit <- data.frame(package_names = c('dplyr',"track2KBA", "TESTpackage"),
+                                   package_versions_toolkit = c("2.3.0", "1.0.5", "1.1.1"))
+
+## Get information about all packages currently installed on your computer
+installed_packages <- installed.packages()
+
+## Create a new dataframe showing the names and versions of the packages installed
+## on your machine
+df.packages.machine <- data.frame(package_names = rownames(installed_packages),
+                          package_versions_machine = installed_packages[, "Version"],
+                          row.names = 1:nrow(installed_packages))
+
+df.packages.machine
+
+## create a dataframe comparing the KEY packages used for the toolkit compared to what
+## you have or may need on your machine
+df.package.compare <- left_join(packages.for.toolkit, df.packages.machine, by = "package_names") %>% 
+  mutate(Packages_to_install = ifelse(is.na(package_versions_machine),
+                                      "Package requires installation",
+                                      "Package already installed"))
+
+df.package.compare
+
+## Review the packages that require installation
+df.packages.to.install <- df.package.compare %>% dplyr::filter(Packages_to_install == "Package requires installation")
+
+df.packages.to.install
+
+## Install all necessary packages if these are not installed on your machine already
+## NOTE: This option installs packages by name, not by name and version
+install.packages(c(df.packages.to.install$package_names))
+
+```
+
